@@ -15,8 +15,7 @@ on:
         description: "Root manager untuk varian KSU"
         type: choice
         options:
-          - BakaSU
-          - ReSukiSU
+          - BakaSU          
           - SukiSU-Ultra
           - KernelSU-Next
           - KernelSU-Official
