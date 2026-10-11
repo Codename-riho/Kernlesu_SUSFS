@@ -10,7 +10,23 @@ permissions:
 
 on:
   workflow_dispatch:
-
+     inputs:
+      ksu_manager:
+        description: "Root manager untuk varian KSU"
+        type: choice
+        options:
+          - BakaSU
+          - ReSukiSU
+          - SukiSU-Ultra
+          - KernelSU-Next
+          - KernelSU-Official
+          - Rissu-KSU
+        default: BakaSU
+      ksu_ref:
+        description: "Opsional: branch/tag manager (kosong = bawaan tiap manager)"
+        required: false
+        default: 
+        
 jobs:
   build-kernels:
     name: "❄️ Build Cryo ${{ matrix.kernel.name }} kernel"
