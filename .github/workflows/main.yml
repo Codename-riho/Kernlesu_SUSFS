@@ -223,13 +223,13 @@ jobs:
           
       - name: "🔧 Add NoMount Support"
         if: matrix.kernel.enable_ksu == true
-        working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         run: |
           curl -LSs "https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh" | bash -
           
       - name: "🔧 Setup BakaSU"
         if: matrix.kernel.enable_ksu == true
-        working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         run: |
           rm -rf ./KernelSU ./drivers/kernelsu
 
@@ -245,7 +245,7 @@ jobs:
           
       - name: "🚀 Inject SUSFS Integration"
         if: matrix.kernel.enable_ksu == true
-        working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         run: |
           # Clone SUSFS4KSU for kernel patches only (not KSU integration)
           echo "📦 Cloning SUSFS4KSU for kernel patches..."
