@@ -222,13 +222,13 @@ jobs:
           sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' security/Kconfig
           
       - name: "🔧 Add NoMount Support"
-        if: github.event.inputs.NoMountSupport == 'yes'
+        if: matrix.kernel.enable_ksu == true
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         run: |
           curl -LSs "https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh" | bash -
           
       - name: "🔧 Setup BakaSU"
-        if: matrix.variant == 'ksu' && github.event.inputs.ksuVariant == 'BakaSU'
+        if: matrix.kernel.enable_ksu == true
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         run: |
           rm -rf ./KernelSU ./drivers/kernelsu
@@ -244,7 +244,7 @@ jobs:
           echo "🎉 BakaSU setup complete!" 
           
       - name: "🚀 Inject SUSFS Integration"
-        if: matrix.variant == 'ksu' && github.event.inputs.susfsSupport == 'Enabled'
+        if: matrix.kernel.enable_ksu == true
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         run: |
           # Clone SUSFS4KSU for kernel patches only (not KSU integration)
