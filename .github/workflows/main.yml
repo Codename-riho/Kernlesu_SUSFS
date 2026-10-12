@@ -136,15 +136,29 @@ jobs:
       - name: "🌟 Clone kernel source"
         working-directory: ./${{ env.KERNEL_LOC_DIR }}
         run: |
-          git clone --recursive --branch ${{ env.KERNEL_BRANCH }} \
-            ${{ env.KERNEL_REPO }} ${{ env.KERNEL_NAME }} --depth=1
+          # Atur buffer git untuk mencegah early EOF
+          git config --global http.postBuffer 524288000
+
+           # Retry loop untuk clone (mencegah error putus koneksi sesaat)
+          for i in {1..3}; do
+            git clone --recursive --branch ${{ env.KERNEL_BRANCH }} \
+              ${{ env.KERNEL_REPO }} ${{ env.KERNEL_NAME }} --depth=1 && break || {
+              echo "⚠️ Clone gagal, mencoba ulang ($i/3)..."
+              sleep 5
+            }
+          done
             
       - name: "📥 Initialize AOSP repo and toolchains"
         working-directory: ${{ env.WORK_DIR }}
         run: |
+          # Konfigurasi global git untuk transfer file besar
+          git config --global http.postBuffer 524288000
+          git config --global http.lowSpeedLimit 1000
+          git config --global http.lowSpeedTime 600
+          
           # Initialize AOSP repo
           repo init -u https://android.googlesource.com/kernel/manifest -b common-android13-5.15-lts --depth=1
-          repo sync --optimized-fetch --prune -j8
+          repo sync --optimized-fetch --prune -j4
           
           # Clean up existing repo and common directories
           rm -rf .repo
