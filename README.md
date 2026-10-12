@@ -8,11 +8,11 @@
 
 # ❄️ CryoKernel build for stability
 
-![Status](https://img.shields.io/badge/status-testing%20%E2%80%93%20unreleased-orange)
+![Status](https://img.shields.io/badge/status-testing%20%E2%80%93%20released-green)
 ![Arch](https://img.shields.io/badge/arch-arm64-blue)
 ![Slot](https://img.shields.io/badge/slot-A%2FB-blue)
 ![Kernel](https://img.shields.io/badge/kernel-5.15-lightgrey)
-![Root](https://img.shields.io/badge/root-ReSukiSU%20%2B%20SUSFS-lightgrey)
+![Root](https://img.shields.io/badge/root-Dynamic%20%2B%20SUSFS-lightgrey)
 
 > **Stability first, features later.**
 > CryoKernel is a custom Android kernel with **ReSukiSU** and **SUSFS** built on one principle: every change must be proven stable before reaching the user.
