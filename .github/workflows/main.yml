@@ -18,9 +18,9 @@ on:
           - BakaSU          
           - SukiSU-Ultra
           - KernelSU-Next-pershoot
-          - KernelSU-Next (need fix for susfs)
+          - KernelSU-Next 
           - KernelSU-Official
-          - Rissu-KSU (not recommended)
+          - Rissu-KSU 
         default: BakaSU
       ksu_ref:
         description: "Opsional: branch/tag manager (kosong = bawaan tiap manager)"
