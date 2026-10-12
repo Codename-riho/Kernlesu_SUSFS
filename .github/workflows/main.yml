@@ -593,6 +593,6 @@ jobs:
         with:
           name: CryoKernel 
           path: ${{ env.ZIP_NAME }}
-          retention-days: 3
+          retention-days: 30
           if-no-files-found: error
           
