@@ -201,19 +201,6 @@ jobs:
           echo '${{ toJSON(matrix.kernel.extra_patches) }}' | jq -r '.[]' | while read p; do
             [ -n "$p" ] && apply_patch "$p"
           done
-
-      - name: "🏷️ Force short localversion"
-        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
-        run: |
-          VER="${{ env.LOCAL_VERSION }}-${{ env.BUILD_TIME }}"
-          cat > scripts/setlocalversion << EOF
-          #!/bin/sh
-          # Cryo: fixed short localversion (ignore git tags/dirty)
-          printf '%s' "$VER"
-          EOF
-          chmod +x scripts/setlocalversion
-          rm -f .scmversion localversion*
-          echo "Localversion: $VER"
           
           # Use scripts/config for safe config manipulation
           scripts/config --file "$CONFIG_FILE" \
@@ -244,6 +231,19 @@ jobs:
           # Remove duplicate lines safely
           sed -i '/ZRAM_DEF_COMP_LZO/d' "$CONFIG_FILE" || true
           
+      - name: "🏷️ Force short localversion"
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        run: |
+          VER="${{ env.LOCAL_VERSION }}-${{ env.BUILD_TIME }}"
+          cat > scripts/setlocalversion << EOF
+          #!/bin/sh
+          # Cryo: fixed short localversion (ignore git tags/dirty)
+          printf '%s' "$VER"
+          EOF
+          chmod +x scripts/setlocalversion
+          rm -f .scmversion localversion*
+          echo "Localversion: $VER"
+                    
       - name: "🚀 Add Droidspaces Support (fix KABI sysvipc)"
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         run: |
