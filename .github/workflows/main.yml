@@ -452,44 +452,33 @@ jobs:
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         run: |
           F=scripts/mkcompile_h
-          WANT_BY="Dyatz"; WANT_HOST="GitHub"
           [ -f "$F" ] || { echo "::error::$F tidak ditemukan"; exit 1; }
-
-          # Identitas efektif = yang benar-benar tertulis di kernel (env dipaksa seperti skrip build AOSP)
-          efektif() {
-            KBUILD_BUILD_USER=build-user KBUILD_BUILD_HOST=build-host sh "$F" arm64 cc ld 2>/dev/null \
-              | sed -n "s/^#define LINUX_COMPILE_$1 \"\(.*\)\"$/\1/p"
-          }
-
-          # 1) Variabel BY/HOST selalu diisi nilai tetap, siapa pun yang menulisnya sebelumnya
-          sed -i -E \
-            -e "s/^([[:space:]]*)LINUX_COMPILE_BY=.*/\1LINUX_COMPILE_BY=\"$WANT_BY\"/" \
-            -e "s/^([[:space:]]*)LINUX_COMPILE_HOST=.*/\1LINUX_COMPILE_HOST=\"$WANT_HOST\"/" "$F"
-
-          # 2) Kalau hasil akhirnya masih beda (nilai ditulis langsung di tempat lain), ganti nilai yang terdeteksi
-          for K in BY HOST; do
-            if [ "$K" = BY ]; then WANT="$WANT_BY"; else WANT="$WANT_HOST"; fi
-            CUR=$(efektif "$K")
-            if [ -n "$CUR" ] && [ "$CUR" != "$WANT" ] && [ "${#CUR}" -ge 3 ] && grep -qF -- "$CUR" "$F"; then
-              echo "↪ LINUX_COMPILE_$K ditulis langsung di file, diganti ke $WANT"
-              ESC=$(printf '%s' "$CUR" | sed 's/[][\\.*^$/&]/\\&/g')
-              sed -i "s/$ESC/$WANT/g" "$F"
-            fi
-          done
-
-          # 3) Verifikasi dan bukti
-          BY=$(efektif BY); HOST=$(efektif HOST)
-          if [ -n "$BY$HOST" ]; then
-            echo "Identitas kernel: $BY@$HOST"
-            [ "$BY" = "$WANT_BY" ] && [ "$HOST" = "$WANT_HOST" ] \
-              || { echo "::error::Identitas kernel belum sesuai (hasil: $BY@$HOST)"; exit 1; }
-          else
-            echo "::warning::Skrip tidak bisa dijalankan untuk verifikasi, hanya memeriksa isi file"
-            grep -nE "LINUX_COMPILE_(BY|HOST)=" "$F" || true
-            grep -q "LINUX_COMPILE_BY=\"$WANT_BY\"" "$F" && grep -q "LINUX_COMPILE_HOST=\"$WANT_HOST\"" "$F" \
-              || { echo "::error::Identitas kernel belum sesuai"; exit 1; }
+          if ! grep -qE '^[[:space:]]*LINUX_COMPILE_(BY|HOST)=' "$F"; then
+            echo "::error::Tidak ada penulisan LINUX_COMPILE_BY/HOST di $F"; exit 1
           fi
-          echo "✅ Identitas kernel terpasang: $WANT_BY@$WANT_HOST"
+
+          # Baris yang menulis identitas tapi belum bernilai Dyatz / GitHub
+          BAD=$(grep -E '^[[:space:]]*LINUX_COMPILE_(BY|HOST)=' "$F" \
+            | grep -vE 'LINUX_COMPILE_BY="Dyatz"$|LINUX_COMPILE_HOST="GitHub"$' || true)
+
+          if [ -z "$BAD" ]; then
+            echo "⏭️ Identitas kernel sudah sesuai (Dyatz @ GitHub), proses dilewati (skip)."
+          else
+            echo "🔄 Memperbarui identitas kernel..."
+            sed -i -E \
+              -e 's/^([[:space:]]*)LINUX_COMPILE_BY=.*/\1LINUX_COMPILE_BY="Dyatz"/' \
+              -e 's/^([[:space:]]*)LINUX_COMPILE_HOST=.*/\1LINUX_COMPILE_HOST="GitHub"/' "$F"
+
+            BAD=$(grep -E '^[[:space:]]*LINUX_COMPILE_(BY|HOST)=' "$F" \
+              | grep -vE 'LINUX_COMPILE_BY="Dyatz"$|LINUX_COMPILE_HOST="GitHub"$' || true)
+            if [ -n "$BAD" ]; then
+              echo "::error::Identitas kernel belum sesuai:"; echo "$BAD"; exit 1
+            fi
+            echo "✅ Identitas kernel berhasil diubah."
+          fi
+
+          # Tampilkan hasilnya sebagai bukti
+          grep -nE "LINUX_COMPILE_(BY|HOST)" "$F"
 
       - name: "🔨 Build kernel"
         working-directory: ${{ env.WORK_DIR }}
