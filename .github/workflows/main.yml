@@ -246,48 +246,62 @@ jobs:
         if: matrix.kernel.enable_ksu == true
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         env:
-          KSU_MANAGER: ${{ inputs.ksu_manager }}
+          KSU_MANAGER: ${{ inputs.ksu_manager || 'BakaSU' }}
           KSU_REF: ${{ inputs.ksu_ref }}
+          SUSFS_BRANCH: gki-android13-5.15
         run: |
-          KSU_MANAGER="${KSU_MANAGER:-BakaSU}"
-          rm -rf ./KernelSU ./drivers/kernelsu
+          set -euo pipefail
+          die() { echo "::error::$*"; exit 1; }
 
-          # manager -> repo | cabang setup.sh | ref bawaan (kosong = tag rilis terbaru) | butuh patch SUSFS di sisi KSU
+          # Per manager: repo, branch hosting setup.sh, default ref,
+          # and whether the SUSFS patch is needed (0 = built-in support).
           case "$KSU_MANAGER" in
-            BakaSU)            REPO="Baka-SU/BakaSU";              SBR="main"; DEF_REF="main";     NEED_PATCH=0 ;;
-            SukiSU-Ultra)      REPO="SukiSU-Ultra/SukiSU-Ultra";   SBR="main"; DEF_REF="builtin";  NEED_PATCH=0 ;;
-            KernelSU-Next)     REPO="KernelSU-Next/KernelSU-Next"; SBR="next"; DEF_REF="";         NEED_PATCH=1 ;;
-            KernelSU-Official) REPO="tiann/KernelSU";              SBR="main"; DEF_REF="";         NEED_PATCH=1 ;;
-            Rissu-KSU)         REPO="rsuntk/KernelSU";             SBR="main"; DEF_REF="";         NEED_PATCH=1 ;;
-            *) echo "::error::Manager tidak dikenal: $KSU_MANAGER"; exit 1 ;;
+            BakaSU)            REPO="Baka-SU/BakaSU";              SETUP_BRANCH=main; DEFAULT_REF=main;    NEED_SUSFS_PATCH=0 ;;
+            SukiSU-Ultra)      REPO="SukiSU-Ultra/SukiSU-Ultra";   SETUP_BRANCH=main; DEFAULT_REF=builtin; NEED_SUSFS_PATCH=0 ;;
+            KernelSU-Next)     REPO="KernelSU-Next/KernelSU-Next"; SETUP_BRANCH=next; DEFAULT_REF="";      NEED_SUSFS_PATCH=1 ;;
+            KernelSU-Official) REPO="tiann/KernelSU";              SETUP_BRANCH=main; DEFAULT_REF="";      NEED_SUSFS_PATCH=1 ;;
+            Rissu-KSU)         REPO="rsuntk/KernelSU";             SETUP_BRANCH=main; DEFAULT_REF="";      NEED_SUSFS_PATCH=1 ;;
+            *) die "Unknown manager: $KSU_MANAGER" ;;
           esac
-          REF="${KSU_REF:-$DEF_REF}"
-          URL="https://raw.githubusercontent.com/${REPO}/${SBR}/kernel/setup.sh"
 
-          echo "📦 Memasang $KSU_MANAGER (ref: ${REF:-tag rilis terbaru})"
-          curl -fsSL -o /tmp/ksu_setup.sh "$URL" || { echo "::error::Gagal mengunduh setup.sh dari $URL"; exit 1; }
-          bash /tmp/ksu_setup.sh ${REF:+"$REF"} || { echo "::error::setup.sh $KSU_MANAGER gagal (ref: ${REF:-tag terbaru})"; exit 1; }
+          REF="${KSU_REF:-$DEFAULT_REF}"
+          SETUP_URL="https://raw.githubusercontent.com/${REPO}/${SETUP_BRANCH}/kernel/setup.sh"
+          echo "Manager: $KSU_MANAGER | ref: ${REF:-latest release tag}"
+          echo "Setup script: $SETUP_URL"
 
-          [ -d KernelSU/kernel ] || { echo "::error::Folder KernelSU/kernel tidak terbentuk"; exit 1; }
-          [ -e drivers/kernelsu ] || { echo "::error::Link drivers/kernelsu tidak terbentuk"; exit 1; }
+          # Remove any previous install, then run the manager's setup script
+          rm -rf ./KernelSU ./drivers/kernelsu
+          curl -fsSL -o /tmp/ksu_setup.sh "$SETUP_URL" \
+            || die "Failed to download $SETUP_URL"
+          bash -x /tmp/ksu_setup.sh ${REF:+"$REF"} \
+            || die "setup.sh for $KSU_MANAGER failed (ref: ${REF:-latest tag})"
 
-          # Manager tanpa SUSFS bawaan butuh patch tambahan di sisi KSU
-          if [ "$NEED_PATCH" = 1 ]; then
+          # Verify the install layout
+          if [ ! -d KernelSU/kernel ]; then
+            find . -maxdepth 3 -type d \( -name 'KernelSU*' -o -name kernel \) 2>/dev/null || true
+            die "KernelSU/kernel was not created"
+          fi
+          [ -e drivers/kernelsu ] || die "drivers/kernelsu symlink was not created"
+
+          # Managers without built-in SUSFS need the integration patch
+          if [ "$NEED_SUSFS_PATCH" = 1 ]; then
+            echo "Applying SUSFS patch (branch: $SUSFS_BRANCH)"
             rm -rf /tmp/susfs4ksu
-            git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android13-5.15 /tmp/susfs4ksu
-            P=/tmp/susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch
-            [ -f "$P" ] || { echo "::error::Patch SUSFS untuk KSU tidak ditemukan: $P"; exit 1; }
-            ( cd KernelSU && patch -p1 --batch < "$P" ) || { echo "::error::Patch SUSFS tidak cocok dengan $KSU_MANAGER (ref: ${REF:-tag terbaru}). Coba isi ksu_ref dengan tag yang lebih lama."; exit 1; }
+            git clone --depth=1 -b "$SUSFS_BRANCH" https://gitlab.com/simonpunk/susfs4ksu.git /tmp/susfs4ksu
+            PATCH_FILE=/tmp/susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch
+            [ -f "$PATCH_FILE" ] || die "SUSFS patch not found: $PATCH_FILE"
+            patch -d KernelSU -p1 --batch < "$PATCH_FILE" \
+              || die "SUSFS patch incompatible with $KSU_MANAGER (ref: ${REF:-latest tag}). Try an older tag."
+          else
+            echo "SUSFS patch not needed for $KSU_MANAGER (built-in)"
           fi
 
-          scripts/config --file arch/arm64/configs/${{ env.DEFCONFIG_NAME }} -e CONFIG_KSU
+          # Enable KernelSU in the defconfig and report
+          scripts/config --file "arch/arm64/configs/$DEFCONFIG_NAME" -e CONFIG_KSU
 
-          VER=$(git -C KernelSU describe --tags --always 2>/dev/null || echo "?")
-          echo "🎉 $KSU_MANAGER siap: $VER"
+          VER=$(git -C KernelSU describe --tags --always 2>/dev/null || echo Unknown)
+          echo "$KSU_MANAGER setup done ($VER)"
           echo "- Root manager: **$KSU_MANAGER** ($VER)" >> "$GITHUB_STEP_SUMMARY"
-          
-          # Add verbose output and error handling
-          bash -x /tmp/ksu_setup.sh ${REF:+"$REF"} || { echo "::error::setup.sh $KSU_MANAGER gagal (ref: ${REF:-tag terbaru})"; exit 1; }
           
       - name: "🚀 Inject SUSFS Integration"
         if: matrix.kernel.enable_ksu == true
