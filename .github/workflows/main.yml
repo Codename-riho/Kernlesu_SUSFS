@@ -270,18 +270,20 @@ jobs:
           echo "Setup script: $SETUP_URL"
 
           # Remove any previous install, then run the manager's setup script
-          rm -rf ./KernelSU ./drivers/kernelsu
+          rm -rf ./KernelSU ./KernelSU-Next ./drivers/kernelsu
           curl -fsSL -o /tmp/ksu_setup.sh "$SETUP_URL" \
             || die "Failed to download $SETUP_URL"
           bash -x /tmp/ksu_setup.sh ${REF:+"$REF"} \
             || die "setup.sh for $KSU_MANAGER failed (ref: ${REF:-latest tag})"
 
-          # Verify the install layout
-          if [ ! -d KernelSU/kernel ]; then
-            find . -maxdepth 3 -type d \( -name 'KernelSU*' -o -name kernel \) 2>/dev/null || true
-            die "KernelSU/kernel was not created"
+          # The install dir name differs per manager (KernelSU, KernelSU-Next, ...),
+          # so resolve it from the drivers/kernelsu symlink instead of hardcoding it.
+          if [ ! -d drivers/kernelsu ]; then
+            ls -ld KernelSU* drivers/kernelsu 2>&1 || true
+            die "drivers/kernelsu symlink is missing or broken"
           fi
-          [ -e drivers/kernelsu ] || die "drivers/kernelsu symlink was not created"
+          KSU_DIR=$(dirname "$(readlink -f drivers/kernelsu)")
+          echo "Install dir: $KSU_DIR"
 
           # Managers without built-in SUSFS need the integration patch
           if [ "$NEED_SUSFS_PATCH" = 1 ]; then
@@ -290,7 +292,7 @@ jobs:
             git clone --depth=1 -b "$SUSFS_BRANCH" https://gitlab.com/simonpunk/susfs4ksu.git /tmp/susfs4ksu
             PATCH_FILE=/tmp/susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch
             [ -f "$PATCH_FILE" ] || die "SUSFS patch not found: $PATCH_FILE"
-            patch -d KernelSU -p1 --batch < "$PATCH_FILE" \
+            patch -d "$KSU_DIR" -p1 --batch < "$PATCH_FILE" \
               || die "SUSFS patch incompatible with $KSU_MANAGER (ref: ${REF:-latest tag}). Try an older tag."
           else
             echo "SUSFS patch not needed for $KSU_MANAGER (built-in)"
@@ -299,7 +301,7 @@ jobs:
           # Enable KernelSU in the defconfig and report
           scripts/config --file "arch/arm64/configs/$DEFCONFIG_NAME" -e CONFIG_KSU
 
-          VER=$(git -C KernelSU describe --tags --always 2>/dev/null || echo Unknown)
+          VER=$(git -C "$KSU_DIR" describe --tags --always 2>/dev/null || echo Unknown)
           echo "$KSU_MANAGER setup done ($VER)"
           echo "- Root manager: **$KSU_MANAGER** ($VER)" >> "$GITHUB_STEP_SUMMARY"
           
