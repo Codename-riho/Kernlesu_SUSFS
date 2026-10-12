@@ -15,7 +15,7 @@
 ![Root](https://img.shields.io/badge/root-Dynamic%20%2B%20SUSFS-lightgrey)
 
 > **Stability first, features later.**
-> CryoKernel is a custom Android kernel with **ReSukiSU** and **SUSFS** built on one principle: every change must be proven stable before reaching the user.
+> CryoKernel is a custom Android kernel with **Dynamic kernelsu variant** and **SUSFS** built on one principle: every change must be proven stable before reaching the user.
 
 ---
 
@@ -184,14 +184,14 @@ Custom kernels can cause bootloops, data loss, or bricked hardware, and may void
 
 # ❄️ CryoKernel build for stability
 
-![Status](https://img.shields.io/badge/status-testing%20%E2%80%93%20belum%20dirilis-orange)
+![Status](https://img.shields.io/badge/status-testing%20%E2%80%93%20%20dirilis-green)
 ![Arch](https://img.shields.io/badge/arch-arm64-blue)
 ![Slot](https://img.shields.io/badge/slot-A%2FB-blue)
 ![Kernel](https://img.shields.io/badge/kernel-5.15-lightgrey)
 ![Root](https://img.shields.io/badge/root-ReSukiSU%20%2B%20SUSFS-lightgrey)
 
 > **Stabil dulu, fitur belakangan.**
-> CryoKernel adalah kernel Android kustom dengan **ReSukiSU** dan **SUSFS** yang dibangun dengan satu prinsip: setiap perubahan harus terbukti stabil sebelum sampai ke pengguna.
+> CryoKernel adalah kernel Android kustom dengan **Dynamic Kernelsu Variant** dan **SUSFS** yang dibangun dengan satu prinsip: setiap perubahan harus terbukti stabil sebelum sampai ke pengguna.
 
 ---
 
@@ -212,7 +212,7 @@ Belum ada file rilis resmi. Build percobaan yang muncul dari workflow di reposit
 
 ## ✨ Fitur (target)
 
-- **ReSukiSU**: root berbasis kernel.
+- **Dynamic Kernelsu Variant**: root berbasis kernel.
 - **SUSFS**: penyembunyian jejak modifikasi kernel dari aplikasi tertentu (hasilnya bergantung perangkat dan aplikasi, tidak ada jaminan).
 - **Clang dengan Full LTO**, dibangun otomatis lewat GitHub Actions.
 - **Berbagai macam pilihan kernel**: zip flash akan memberikan opsi yang diperluas sehingga dapat menyesuaikan keinginan user.
