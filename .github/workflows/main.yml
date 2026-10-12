@@ -17,6 +17,7 @@ on:
         options:
           - BakaSU          
           - SukiSU-Ultra
+          - KernelSU-Next-pershoot
           - KernelSU-Next
           - KernelSU-Official
           - Rissu-KSU
@@ -242,7 +243,7 @@ jobs:
         run: |
           curl -LSs "https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh" | bash -
           
-      - name: "🔧 Setup root manager (${{ inputs.ksu_manager }})"
+      - name: "⚔️ Setup root manager (${{ inputs.ksu_manager }})"
         if: matrix.kernel.enable_ksu == true
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         env:
@@ -253,14 +254,19 @@ jobs:
           set -euo pipefail
           die() { echo "::error::$*"; exit 1; }
 
+          MULTI_MANAGER_PATCH="https://raw.githubusercontent.com/RapliVx/kernel_builder/refs/heads/main/patch/ksun-add-more-managers-support.patch"
+          EXTRA_PATCH_URL=""
+
           # Per manager: repo, branch hosting setup.sh, default ref,
-          # and whether the SUSFS patch is needed (0 = built-in support).
+          # whether the SUSFS patch is needed (0 = built-in support),
+          # and an optional extra patch URL applied after setup.
           case "$KSU_MANAGER" in
-            BakaSU)            REPO="Baka-SU/BakaSU";              SETUP_BRANCH=main; DEFAULT_REF=main;    NEED_SUSFS_PATCH=0 ;;
-            SukiSU-Ultra)      REPO="SukiSU-Ultra/SukiSU-Ultra";   SETUP_BRANCH=main; DEFAULT_REF=builtin; NEED_SUSFS_PATCH=0 ;;
-            KernelSU-Next)     REPO="KernelSU-Next/KernelSU-Next"; SETUP_BRANCH=next; DEFAULT_REF="";      NEED_SUSFS_PATCH=1 ;;
-            KernelSU-Official) REPO="tiann/KernelSU";              SETUP_BRANCH=main; DEFAULT_REF="";      NEED_SUSFS_PATCH=1 ;;
-            Rissu-KSU)         REPO="rsuntk/KernelSU";             SETUP_BRANCH=main; DEFAULT_REF="";      NEED_SUSFS_PATCH=1 ;;
+            BakaSU)                 REPO="Baka-SU/BakaSU";              SETUP_BRANCH=main;      DEFAULT_REF=main;      NEED_SUSFS_PATCH=0 ;;
+            SukiSU-Ultra)           REPO="SukiSU-Ultra/SukiSU-Ultra";   SETUP_BRANCH=main;      DEFAULT_REF=builtin;   NEED_SUSFS_PATCH=0 ;;
+            KernelSU-Next)          REPO="KernelSU-Next/KernelSU-Next"; SETUP_BRANCH=next;      DEFAULT_REF="";        NEED_SUSFS_PATCH=1 ;;
+            KernelSU-Next-pershoot) REPO="pershoot/KernelSU-Next";      SETUP_BRANCH=dev-susfs; DEFAULT_REF=dev-susfs; NEED_SUSFS_PATCH=0; EXTRA_PATCH_URL="$MULTI_MANAGER_PATCH" ;;
+            KernelSU-Official)      REPO="tiann/KernelSU";              SETUP_BRANCH=main;      DEFAULT_REF="";        NEED_SUSFS_PATCH=1 ;;
+            Rissu-KSU)              REPO="rsuntk/KernelSU";             SETUP_BRANCH=main;      DEFAULT_REF="";        NEED_SUSFS_PATCH=1 ;;
             *) die "Unknown manager: $KSU_MANAGER" ;;
           esac
 
@@ -296,6 +302,15 @@ jobs:
               || die "SUSFS patch incompatible with $KSU_MANAGER (ref: ${REF:-latest tag}). Try an older tag."
           else
             echo "SUSFS patch not needed for $KSU_MANAGER (built-in)"
+          fi
+
+          # Optional extra patch (e.g. multi-manager support)
+          if [ -n "$EXTRA_PATCH_URL" ]; then
+            echo "Applying extra patch: $EXTRA_PATCH_URL"
+            curl -fsSL -o /tmp/ksu_extra.patch "$EXTRA_PATCH_URL" \
+              || die "Failed to download $EXTRA_PATCH_URL"
+            patch -d "$KSU_DIR" -p1 --batch < /tmp/ksu_extra.patch \
+              || die "Extra patch failed on $KSU_MANAGER (ref: ${REF:-latest tag})"
           fi
 
           # Enable KernelSU in the defconfig and report
