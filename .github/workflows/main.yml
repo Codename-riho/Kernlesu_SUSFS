@@ -611,7 +611,7 @@ jobs:
           EOF
 
           # Create ZIP
-          ZIP_NAME="AK3_CRYO-AIO-FULL_MULTI_$(date +'%Y-%m-%d').zip"
+          ZIP_NAME="CryoKernel_$(TZ=Asia/Jakarta date +'%Y-%m-%d').zip"
           cd AnyKernel3
           zip -r9 "../$ZIP_NAME" * -x .git/*
           cd ..
@@ -620,10 +620,10 @@ jobs:
           echo "✅ Package created: $ZIP_NAME"
           
       - name: "📤 Upload kernel ZIP artifact"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: CryoKernel 
           path: ${{ env.ZIP_NAME }}
+          archive: false
           retention-days: 30
           if-no-files-found: error
           
