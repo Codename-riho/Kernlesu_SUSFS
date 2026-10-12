@@ -273,6 +273,7 @@ jobs:
 
           # Manager tanpa SUSFS bawaan butuh patch tambahan di sisi KSU
           if [ "$NEED_PATCH" = 1 ]; then
+            rm -rf /tmp/susfs4ksu
             git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android13-5.15 /tmp/susfs4ksu
             P=/tmp/susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch
             [ -f "$P" ] || { echo "::error::Patch SUSFS untuk KSU tidak ditemukan: $P"; exit 1; }
