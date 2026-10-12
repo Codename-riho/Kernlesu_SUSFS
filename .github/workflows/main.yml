@@ -286,6 +286,9 @@ jobs:
           echo "🎉 $KSU_MANAGER siap: $VER"
           echo "- Root manager: **$KSU_MANAGER** ($VER)" >> "$GITHUB_STEP_SUMMARY"
           
+          # Add verbose output and error handling
+          bash -x /tmp/ksu_setup.sh ${REF:+"$REF"} || { echo "::error::setup.sh $KSU_MANAGER gagal (ref: ${REF:-tag terbaru})"; exit 1; }
+          
       - name: "🚀 Inject SUSFS Integration"
         if: matrix.kernel.enable_ksu == true
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
