@@ -202,6 +202,15 @@ jobs:
             [ -n "$p" ] && apply_patch "$p"
           done
 
+          # === PENGHANCUR SUFFIX KERNEL PANJANG ===
+          # 1. Menimpa skrip bawaan agar tidak membaca git tag & tidak menambah tulisan -dirty
+          echo -e "#!/bin/bash\necho \"\"" > scripts/setlocalversion
+          chmod +x scripts/setlocalversion
+          
+          # 2. Membersihkan sisa teks panjang di Makefile (Jika ada)
+          sed -i 's/^EXTRAVERSION =.*/EXTRAVERSION = /g' Makefile
+          # ========================================
+          
           # Use scripts/config for safe config manipulation
           scripts/config --file "$CONFIG_FILE" \
             -e CONFIG_KALLSYMS \
