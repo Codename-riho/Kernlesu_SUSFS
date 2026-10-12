@@ -202,14 +202,18 @@ jobs:
             [ -n "$p" ] && apply_patch "$p"
           done
 
-          # === PENGHANCUR SUFFIX KERNEL PANJANG ===
-          # 1. Menimpa skrip bawaan agar tidak membaca git tag & tidak menambah tulisan -dirty
-          echo -e "#!/bin/bash\necho \"\"" > scripts/setlocalversion
+      - name: "🏷️ Force short localversion"
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        run: |
+          VER="${{ env.LOCAL_VERSION }}-${{ env.BUILD_TIME }}"
+          cat > scripts/setlocalversion << EOF
+          #!/bin/sh
+          # Cryo: fixed short localversion (ignore git tags/dirty)
+          printf '%s' "$VER"
+          EOF
           chmod +x scripts/setlocalversion
-          
-          # 2. Membersihkan sisa teks panjang di Makefile (Jika ada)
-          sed -i 's/^EXTRAVERSION =.*/EXTRAVERSION = /g' Makefile
-          # ========================================
+          rm -f .scmversion localversion*
+          echo "Localversion: $VER"
           
           # Use scripts/config for safe config manipulation
           scripts/config --file "$CONFIG_FILE" \
