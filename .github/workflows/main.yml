@@ -1,4 +1,4 @@
-name: "Build Cryo-Daily  (Daily Driver)"
+name: "Build Cryo-Kernel-Daily"
 
 env:
   OUT_DIR: "out"
