@@ -549,8 +549,8 @@ jobs:
       - name: "📤 Upload kernel ZIP artifact"
         uses: actions/upload-artifact@v4
         with:
-          name: AK3_CRYO-AIO
-          path: AK3_CRYO-Multi_*.zip
+          name: CryoKernel 
+          path: ${{ env.ZIP_NAME }}
           retention-days: 3
           if-no-files-found: error
           
