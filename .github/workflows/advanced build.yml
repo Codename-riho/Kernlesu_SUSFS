@@ -278,15 +278,6 @@ jobs:
             args="$args CC=clang"
             echo "args=$args" >> $GITHUB_OUTPUT
 
-      - name: "📝 Append custom Makefile line"
-        working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
-        run: |
-         echo 'KBUILD_CFLAGS += -Wno-default-const-init-unsafe' >> Makefile
-         echo 'KBUILD_CFLAGS += -Wno-uninitialized-const-pointer' >> Makefile
-         echo 'KBUILD_CFLAGS += -Wno-implicit-function-declaration' >> Makefile
-         echo 'KBUILD_CFLAGS += -Wno-sometimes-uninitialized' >> Makefile
-         echo "Custom Makefile line added successfully"
-         
       - name: "⚙️ Configure kernel"
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         env:
@@ -499,9 +490,9 @@ jobs:
         run: |
           set -o pipefail
           if [ "${{ github.event.inputs.LtoOptimizations }}" = "thin" ]; then
-           LTO=thin BUILD_CONFIG=${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki.aarch64 build/build.sh -j$(nproc --all)
+           LTO=thin BUILD_CONFIG=${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki.aarch64 build/build.sh -j$(nproc --all) 2>&1 | tee build_full.log
           else
-           LTO=full BUILD_CONFIG=${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki.aarch64 build/build.sh -j$(nproc --all)
+           LTO=full BUILD_CONFIG=${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki.aarch64 build/build.sh -j$(nproc --all) 2>&1 | tee build_full.log
           fi
           
       - name: "👍 Make defconfig"
@@ -518,6 +509,7 @@ jobs:
         env:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
+          set -o pipefail
           make ${args} \
             LLVM=1 \
             CC=clang \
@@ -525,7 +517,7 @@ jobs:
             NM=llvm-nm \
             OBJCOPY=llvm-objcopy \
             STRIP=llvm-strip \
-            -j$(nproc --all)
+            -j$(nproc --all) 2>&1 | tee ${{ env.WORK_DIR }}/build_full.log
 
       - name: "🚨 Kumpulkan Log Error (Jika Gagal)"
         if: failure()
