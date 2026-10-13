@@ -1,4 +1,4 @@
-name: "Advanced Build (forked fromtopnotchfreaks)"
+name: "Advanced Build"
 
 env:
   OUT_DIR: "out"
