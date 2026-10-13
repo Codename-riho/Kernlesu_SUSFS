@@ -1,4 +1,4 @@
-name: "Build Cryo-Kernel-Daily"
+name: "Build Experiental"
 
 env:
   OUT_DIR: "out"
