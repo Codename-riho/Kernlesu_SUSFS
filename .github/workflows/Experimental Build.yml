@@ -240,10 +240,20 @@ jobs:
             -e ZRAM_DEF_COMP_LZ4 \
             -d CONFIG_KERNEL_GZIP \
             -d CONFIG_KERNEL_LZO \
-            -d CONFIG_KERNEL_XZ
+            -d CONFIG_KERNEL_XZ \
+            -d CONFIG_UAPI_HEADER_TEST
           
           # Remove duplicate lines safely
           sed -i '/ZRAM_DEF_COMP_LZO/d' "$CONFIG_FILE" || true
+          
+      - name: "🩹 Fix Qualcomm UAPI header (CLO)"
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        run: |
+          H=include/uapi/linux/qcom_fmgr_interface.h
+          if [ -f "$H" ] && ! grep -q 'linux/types.h' "$H"; then
+            sed -i '0,/^#include\|^struct\|^typedef/s//#include <linux\/types.h>\n#include <linux\/i2c.h>\n&/' "$H"
+            echo "Header diperbaiki"
+          fi
           
       - name: "🏷️ Force short localversion"
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
