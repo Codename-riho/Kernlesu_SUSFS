@@ -98,7 +98,20 @@ jobs:
            echo "BUILD_TIME=$(TZ=Asia/Jakarta date +'%Y-%m-%d')" >> $GITHUB_ENV
           sudo apt-get update -qq
           sudo apt-get install -y repo rsync aria2 build-essential bc curl flex cpio rsync git zip dwarves libelf-dev gcc-aarch64-linux-gnu libssl-dev python3 clang lld llvm llvm-dev
-
+          
+      - name: "🧹 Aggressive Cleanup"
+        run: |
+          # Remove heavy pre-installed tools
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          
+          # Prune Docker to remove hidden images and build cache
+          sudo docker image prune --all --force
+          sudo docker builder prune -a -f
+          
       - name: "🌟 Clone kernel source"
         working-directory: ./${{ env.kernelDir }}
         run: |
@@ -506,10 +519,11 @@ jobs:
 
           echo "🎉 ReSukiSU installed and SUSFS for GKI android13-5.15 fully integrated!"
 
-      - name: "🏗️ Install build dependencies "
-        run: | 
-            sudo apt-get update sudo apt-get install -y clang build-essential bc bison flex libssl-dev libelf-dev libncurses-dev
-
+      - name: "🏗️ Install build dependencies"
+        run: |
+            sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+            clang build-essential bc bison flex libssl-dev libelf-dev libncurses-dev
+             
       - name: "🔨 Build kernel"
         if: github.event.inputs.buildToolchains == 'android-tools'
         working-directory: ${{ env.WORK_DIR }}
