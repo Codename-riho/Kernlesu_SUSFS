@@ -37,11 +37,28 @@ on:
           - "noksu"
           - "ksu"
           - "both"
+      ksuManager:
+        description: "Root manager (varian ksu)"
+        required: true
+        type: choice
+        default: "SukiSU-Ultra"
+        options:
+          - "SukiSU-Ultra"
+          - "BakaSU"
+          - "KernelSU-Next-pershoot"
+          - "KernelSU-Next"
+          - "KernelSU-Official"
+          - "Rissu-KSU"
+      ksuRef:
+        description: "Tag/branch/commit manager (kosong = default manager)"
+        required: false
+        type: string
+        default: ""
       tickRate:
         description: "Kernel tick rate (Hz)"
         required: false
         type: choice
-        default: "250"
+        default: "250Hz"
         options:
           - "default"
           - "100Hz"
@@ -129,7 +146,10 @@ jobs:
           
           # Initialize AOSP repo
           repo init -u https://android.googlesource.com/kernel/manifest -b common-android13-5.15-lts --depth=1
-          repo sync --optimized-fetch --prune -j4
+          mkdir -p .repo/local_manifests
+          printf '<manifest>\n  <remove-project name="kernel/common" optional="true" />\n</manifest>\n' > .repo/local_manifests/skip-common.xml
+          repo sync -c --no-tags --no-clone-bundle --optimized-fetch --prune -j"$(nproc --all)"
+          rm -rf .repo
           
           # Clean up existing repo and common directories
           rm -rf .repo
@@ -151,7 +171,8 @@ jobs:
           sed -i \
            -e 's/^BRANCH=.*/BRANCH=android13-5.15/' \
            -e 's/^CLANG_VERSION=.*/CLANG_VERSION=r547379/' \
-           ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}/build.config.constants
+           "${{ env.kernelDir }}/${{ env.kernelName }}/build.config.constants"
+          sed -i '/^POST_DEFCONFIG_CMDS="check_defconfig"/d' "${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki" || true
           
           # Remove defconfig check (if exists)
           sed -i '/^POST_DEFCONFIG_CMDS="check_defconfig"/d' ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}/build.config.gki || true
@@ -262,120 +283,58 @@ jobs:
          echo 'KBUILD_CFLAGS += -Wno-implicit-function-declaration' >> Makefile
          echo 'KBUILD_CFLAGS += -Wno-sometimes-uninitialized' >> Makefile
          echo "Custom Makefile line added successfully"
-    
+         
       - name: "⚙️ Configure kernel"
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
+        env:
+          LOCAL_VERSION: ${{ inputs.localVersion }}
+          LTO_MODE: ${{ inputs.LtoOptimizations }}
+          OPT_LEVEL: ${{ inputs.optimizationLevel }}
+          TICK_RATE: ${{ inputs.tickRate }}
         run: |
-         # Define the config file path
-         CONFIG_FILE="arch/arm64/configs/${{ env.DEFCONFIG_NAME }}"
-    
-         # Remove any existing LTO FULL configuration
-         sed -i '/^CONFIG_LTO_CLANG_FULL/d' "$CONFIG_FILE"
-    
-         # Set localversion
-         if [ -n "${{ github.event.inputs.localVersion }}" ]; then
-          echo "CONFIG_LOCALVERSION=\"${{ github.event.inputs.localVersion }}\"" >> "$CONFIG_FILE"
-         fi
-    
-         # LTO Configuration - Enable Thin LTO only
-         if [ "${{ github.event.inputs.LtoOptimizations }}" = "thin" ]; then
-           sed -i '/CONFIG_LTO_CLANG_FULL/d' "$CONFIG_FILE"
-           echo "CONFIG_LTO_CLANG=y" >> "$CONFIG_FILE"
-           echo "# CONFIG_LTO_CLANG_FULL is not set" >> "$CONFIG_FILE"
-           echo "CONFIG_LTO_CLANG_THIN=y" >> "$CONFIG_FILE"
-           echo "CONFIG_THINLTO=y" >> "$CONFIG_FILE"
-         else
-           sed -i '/CONFIG_LTO_CLANG_FULL/d' "$CONFIG_FILE"
-           echo "CONFIG_LTO_CLANG=y" >> "$CONFIG_FILE"
-           echo "CONFIG_LTO_CLANG_FULL=y" >> "$CONFIG_FILE"
-           echo "# CONFIG_LTO_CLANG_THIN is not set" >> "$CONFIG_FILE"
-           echo "# CONFIG_THINLTO is not set" >> "$CONFIG_FILE"
-         fi
+          set -euo pipefail
+          CONFIG_FILE="arch/arm64/configs/$DEFCONFIG_NAME"
+          cfg() { scripts/config --file "$CONFIG_FILE" "$@"; }
 
-         # Full Metamodule Support
-         echo "CONFIG_KALLSYMS=y" >> "$CONFIG_FILE"
-         echo "CONFIG_TMPFS_XATTR=y" >> "$CONFIG_FILE"
-         echo "CONFIG_TMPFS_POSIX_ACL=y" >> "$CONFIG_FILE"
-         echo "CONFIG_OVERLAY_FS=y" >> "$CONFIG_FILE"
-          
-         # Remove existing optimization configs
-         sed -i '/CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE/d' "$CONFIG_FILE"
-         sed -i '/CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3/d' "$CONFIG_FILE"
-         sed -i '/CONFIG_CC_OPTIMIZE_FOR_SIZE/d' "$CONFIG_FILE"
-          
-          # Apply selected optimization level
-          case "${{ github.event.inputs.optimizationLevel }}" in
-            default)
-              # nothing to add here (keep it default)
-              ;;
-            O2)
-              echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> "$CONFIG_FILE"
-              echo "# CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3 is not set" >> "$CONFIG_FILE"
-              echo "# CONFIG_CC_OPTIMIZE_FOR_SIZE is not set" >> "$CONFIG_FILE"
-              ;;
-            O3)
-              echo "# CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE is not set" >> "$CONFIG_FILE"
-              echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3=y" >> "$CONFIG_FILE"
-              echo "# CONFIG_CC_OPTIMIZE_FOR_SIZE is not set" >> "$CONFIG_FILE"
-              ;;
-            Os)
-              echo "# CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE is not set" >> "$CONFIG_FILE"
-              echo "# CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3 is not set" >> "$CONFIG_FILE"
-              echo "CONFIG_CC_OPTIMIZE_FOR_SIZE=y" >> "$CONFIG_FILE"
-              ;;
-          esac
-                   
-          # Apply selected tick rate
-          case "${{ github.event.inputs.tickRate }}" in
-            default)
-              # nothing to add here (keep it default)
-              ;;
-            100Hz)
-              sed -i '/^CONFIG_HZ_100=/d' "$CONFIG_FILE"
-              sed -i '/^CONFIG_HZ_250=/d' "$CONFIG_FILE"
-              sed -i '/^CONFIG_HZ_300=/d' "$CONFIG_FILE"
-              sed -i '/^CONFIG_HZ_1000=/d' "$CONFIG_FILE"
-              echo "CONFIG_NO_HZ_IDLE=y" >> "$CONFIG_FILE"
-              echo "CONFIG_HZ=100" >> "$CONFIG_FILE"
-              echo "CONFIG_HZ_100=y" >> "$CONFIG_FILE"
-              ;;
-            250Hz)
-              sed -i '/^CONFIG_HZ_100=/d' "$CONFIG_FILE"
-              sed -i '/^CONFIG_HZ_250=/d' "$CONFIG_FILE"
-              sed -i '/^CONFIG_HZ_300=/d' "$CONFIG_FILE"
-              sed -i '/^CONFIG_HZ_1000=/d' "$CONFIG_FILE"
-              echo "CONFIG_NO_HZ_IDLE=y" >> "$CONFIG_FILE"
-              echo "CONFIG_HZ=250" >> "$CONFIG_FILE"
-              echo "CONFIG_HZ_250=y" >> "$CONFIG_FILE"
-              ;;
-            300Hz)
-              sed -i '/^CONFIG_HZ_100=/d' "$CONFIG_FILE"
-              sed -i '/^CONFIG_HZ_250=/d' "$CONFIG_FILE"
-              sed -i '/^CONFIG_HZ_300=/d' "$CONFIG_FILE"
-              sed -i '/^CONFIG_HZ_1000=/d' "$CONFIG_FILE"
-              echo "CONFIG_NO_HZ_IDLE=y" >> "$CONFIG_FILE"
-              echo "CONFIG_HZ=300" >> "$CONFIG_FILE"
-              echo "CONFIG_HZ_300=y" >> "$CONFIG_FILE"
-              ;;
-            1000Hz)
-              sed -i '/^CONFIG_HZ_100=/d' "$CONFIG_FILE"
-              sed -i '/^CONFIG_HZ_250=/d' "$CONFIG_FILE"
-              sed -i '/^CONFIG_HZ_300=/d' "$CONFIG_FILE"
-              sed -i '/^CONFIG_HZ_1000=/d' "$CONFIG_FILE"
-              echo "CONFIG_NO_HZ_IDLE=y" >> "$CONFIG_FILE"
-              echo "CONFIG_HZ=1000" >> "$CONFIG_FILE"
-              echo "CONFIG_HZ_1000=y" >> "$CONFIG_FILE"
-              ;;
+          if [ -n "$LOCAL_VERSION" ]; then
+            cfg --set-str LOCALVERSION "$LOCAL_VERSION"
+          fi
+
+          # LTO
+          if [ "$LTO_MODE" = thin ]; then
+            cfg -e LTO_CLANG -d LTO_CLANG_FULL -e LTO_CLANG_THIN -e THINLTO
+          else
+            cfg -e LTO_CLANG -e LTO_CLANG_FULL -d LTO_CLANG_THIN -d THINLTO
+          fi
+
+          # Full Metamodule Support
+          cfg -e KALLSYMS -e TMPFS_XATTR -e TMPFS_POSIX_ACL -e OVERLAY_FS
+
+          # Optimization level (default = hapus override, pakai default Kconfig)
+          sed -i '/CONFIG_CC_OPTIMIZE_FOR_/d' "$CONFIG_FILE"
+          case "$OPT_LEVEL" in
+            O2) cfg -e CC_OPTIMIZE_FOR_PERFORMANCE -d CC_OPTIMIZE_FOR_PERFORMANCE_O3 -d CC_OPTIMIZE_FOR_SIZE ;;
+            O3) cfg -d CC_OPTIMIZE_FOR_PERFORMANCE -e CC_OPTIMIZE_FOR_PERFORMANCE_O3 -d CC_OPTIMIZE_FOR_SIZE ;;
+            Os) cfg -d CC_OPTIMIZE_FOR_PERFORMANCE -d CC_OPTIMIZE_FOR_PERFORMANCE_O3 -e CC_OPTIMIZE_FOR_SIZE ;;
           esac
 
-          # Sign Builds
-          curl -L -o sign.patch "https://raw.githubusercontent.com/Dyatz/Topaz_resukisu_SUSFS/refs/heads/main/patches/0001-scripts-sign-builds.patch" 
-          patch -p1 < sign.patch || echo "Warning: Strings patch failed"
+          # Tick rate (terima "250Hz" maupun "250"; selain itu = default)
+          case "${TICK_RATE%Hz}" in
+            100|250|300|1000)
+              HZ="${TICK_RATE%Hz}"
+              cfg -d HZ_100 -d HZ_250 -d HZ_300 -d HZ_1000 -e "HZ_$HZ" --set-val HZ "$HZ" -e NO_HZ_IDLE ;;
+            *) echo "Tick rate: default" ;;
+          esac
 
-          # localversion
-          # curl -L -o localversion.patch "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-do-not-ship-full-auto_localversion.patch" 
-          # patch -p1 < localversion.patch || echo "Warning: Strings patch failed"
-
+          # Sign builds
+          # localversion: 0001-scripts-do-not-ship-full-auto_localversion.patch (nonaktif)
+          if curl -fsSL -o /tmp/sign.patch "https://raw.githubusercontent.com/Dyatz/Topaz_resukisu_SUSFS/refs/heads/main/patches/0001-scripts-sign-builds.patch" \
+             && patch -p1 --batch < /tmp/sign.patch; then
+            echo "sign-builds patch applied"
+          else
+            echo "::warning::sign-builds patch gagal, lanjut tanpa patch"
+          fi
+          
       - name: "🔧 Add BBG Support (KSU variant only)"
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         run: |
@@ -445,79 +404,144 @@ jobs:
           # Always replace include/linux/susfs.h
           mkdir -p include/linux
           cp -f susfs4ksu/kernel_patches/include/linux/susfs.h include/linux/susfs.h
-          echo "✔ Copied include/linux/susfs.h"
-          
-          # Also install missing susfs_def.h
-          if [ -f susfs4ksu/kernel_patches/include/linux/susfs_def.h ]; then
-            cp -f susfs4ksu/kernel_patches/include/linux/susfs_def.h include/linux/susfs_def.h
-            echo "✔ Copied include/linux/susfs_def.h"
-          else
-            echo "⚠️ susfs_def.h not found in repo"
-          fi
-          
-          echo "🔍 Verifying SUSFS files..."
-          for f in fs/susfs.c include/linux/susfs.h include/linux/susfs_def.h; do
-            if [ -f "$f" ]; then echo "✔ Found: $f"; else echo "❌ Missing: $f"; fi
-          done
-          
-          # Clean up SUSFS repo (we only needed kernel patches, not KSU integration)
-          rm -rf susfs4ksu
-          
-          # Create symbolic link for drivers/kernelsu (if needed by build system)
-          if [ ! -L "drivers/kernelsu" ]; then
-            ln -sf ../KernelSU drivers/kernelsu
-            echo "✔ Created drivers/kernelsu symlink"
-          fi
-
-          echo "✅ SUSFS build wiring verified"
-
-          CONFIG_FILE="arch/arm64/configs/${{ env.DEFCONFIG_NAME }}"
-          cat >> "$CONFIG_FILE" << 'EOF'
-          CONFIG_KSU_SUSFS=y
-          CONFIG_KSU_SUSFS_SUS_PATH=y
-          CONFIG_KSU_SUSFS_SUS_MOUNT=y
-          CONFIG_KSU_SUSFS_SUS_KSTAT=y
-          CONFIG_KSU_SUSFS_SPOOF_UNAME=y
-          CONFIG_KSU_SUSFS_ENABLE_LOG=y
-          CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y
-          CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
-          CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
-          CONFIG_KSU_SUSFS_SUS_MAP=y
-          EOF
-
-          echo "↩️ Reverting namespace.c Fake Patch (if applicable)"
-          if [ "$NS_FAKE_PATCHED" = "1" ] && ! grep -q 'trace/hooks/blk.h' fs/namespace.c; then
-            if grep -q '^#include "internal.h"$' fs/namespace.c; then
-              sed -i '/^#include "internal.h"$/a #include <trace/hooks/blk.h>' fs/namespace.c
-              echo "✔ Restored blk.h include"
-            else
-              echo "⚠️ Anchor #include \"internal.h\" not found — could not restore blk.h include, check fs/namespace.c manually"
-            fi
-          else
-            echo "ℹ️ Skipping blk.h restore (not fake-patched or already present)"
-          fi
-
-          echo "↩️ Reverting task_mmu.c Fake Patch (if applicable)"
-          if [ "$MM_FAKE_PATCHED" = "1" ] && ! grep -q 'trace/hooks/mm.h' fs/proc/task_mmu.c; then
-            if grep -q '^#include <linux/pkeys.h>$' fs/proc/task_mmu.c; then
-              sed -i '/^#include <linux\/pkeys.h>$/a #include <trace/hooks/mm.h>' fs/proc/task_mmu.c
-              echo "✔ Restored mm.h include"
-            else
-              echo "⚠️ Anchor #include <linux/pkeys.h> not found — could not restore mm.h include, check fs/proc/task_mmu.c manually"
-            fi
-          else
-            echo "ℹ️ Skipping mm.h restore (not fake-patched or already present)"
-          fi
-          
-          echo "✅ KSU configs added"
-
-          echo "🎉 ReSukiSU installed and SUSFS for GKI android13-5.15 fully integrated!"
-
-      - name: "🏗️ Install build dependencies"
+      - name: "⚔️ Setup root manager (${{ inputs.ksuManager }})"
+        if: matrix.variant == 'ksu'
+        working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
+        env:
+          KSU_MANAGER: ${{ inputs.ksuManager || 'SukiSU-Ultra' }}
+          KSU_REF: ${{ inputs.ksuRef }}
+          SUSFS_BRANCH: gki-android13-5.15
         run: |
-            sudo apt-get update && sudo apt-get install -y --no-install-recommends \
-            clang build-essential bc bison flex libssl-dev libelf-dev libncurses-dev
-             
+          set -euo pipefail
+          die() { echo "::error::$*"; exit 1; }
+
+          MULTI_MANAGER_PATCH="https://raw.githubusercontent.com/RapliVx/kernel_builder/refs/heads/main/patch/ksun-add-more-managers-support.patch"
+          EXTRA_PATCH_URL=""
+
+          # Per manager: repo, branch hosting setup.sh, default ref,
+          # whether the SUSFS->KSU patch is needed (0 = built-in support),
+          # and an optional extra patch URL applied after setup.
+          case "$KSU_MANAGER" in
+            SukiSU-Ultra)           REPO="SukiSU-Ultra/SukiSU-Ultra";   SETUP_BRANCH=main;      DEFAULT_REF=builtin;   NEED_SUSFS_PATCH=0 ;;
+            BakaSU)                 REPO="Baka-SU/BakaSU";              SETUP_BRANCH=main;      DEFAULT_REF=main;      NEED_SUSFS_PATCH=0 ;;
+            KernelSU-Next-pershoot) REPO="pershoot/KernelSU-Next";      SETUP_BRANCH=dev-susfs; DEFAULT_REF=dev-susfs; NEED_SUSFS_PATCH=0; EXTRA_PATCH_URL="$MULTI_MANAGER_PATCH" ;;
+            KernelSU-Next)          REPO="KernelSU-Next/KernelSU-Next"; SETUP_BRANCH=next;      DEFAULT_REF="";        NEED_SUSFS_PATCH=1 ;;
+            KernelSU-Official)      REPO="tiann/KernelSU";              SETUP_BRANCH=main;      DEFAULT_REF="";        NEED_SUSFS_PATCH=1 ;;
+            Rissu-KSU)              REPO="rsuntk/KernelSU";             SETUP_BRANCH=main;      DEFAULT_REF="";        NEED_SUSFS_PATCH=1 ;;
+            *) die "Unknown manager: $KSU_MANAGER" ;;
+          esac
+
+          REF="${KSU_REF:-$DEFAULT_REF}"
+          SETUP_URL="https://raw.githubusercontent.com/${REPO}/${SETUP_BRANCH}/kernel/setup.sh"
+          echo "Manager: $KSU_MANAGER | ref: ${REF:-latest release tag}"
+          echo "Setup script: $SETUP_URL"
+
+          # Remove any previous install, then run the manager's setup script
+          rm -rf ./KernelSU ./KernelSU-Next ./drivers/kernelsu
+          curl -fsSL -o /tmp/ksu_setup.sh "$SETUP_URL" \
+            || die "Failed to download $SETUP_URL"
+          bash -x /tmp/ksu_setup.sh ${REF:+"$REF"} \
+            || die "setup.sh for $KSU_MANAGER failed (ref: ${REF:-latest tag})"
+
+          # The install dir name differs per manager (KernelSU, KernelSU-Next, ...),
+          # so resolve it from the drivers/kernelsu symlink instead of hardcoding it.
+          if [ ! -d drivers/kernelsu ]; then
+            ls -ld KernelSU* drivers/kernelsu 2>&1 || true
+            die "drivers/kernelsu symlink is missing or broken"
+          fi
+          KSU_DIR=$(dirname "$(readlink -f drivers/kernelsu)")
+          echo "Install dir: $KSU_DIR"
+
+          # Managers without built-in SUSFS need the integration patch
+          if [ "$NEED_SUSFS_PATCH" = 1 ]; then
+            echo "Applying SUSFS->KSU patch (branch: $SUSFS_BRANCH)"
+            rm -rf /tmp/susfs4ksu
+            git clone --depth=1 -b "$SUSFS_BRANCH" https://gitlab.com/simonpunk/susfs4ksu.git /tmp/susfs4ksu
+            PATCH_FILE=/tmp/susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch
+            [ -f "$PATCH_FILE" ] || die "SUSFS patch not found: $PATCH_FILE"
+            patch -d "$KSU_DIR" -p1 --batch < "$PATCH_FILE" \
+              || die "SUSFS patch incompatible with $KSU_MANAGER (ref: ${REF:-latest tag}). Try an older tag."
+          else
+            echo "SUSFS->KSU patch not needed for $KSU_MANAGER (built-in)"
+          fi
+
+          # Optional extra patch (e.g. multi-manager support)
+          if [ -n "$EXTRA_PATCH_URL" ]; then
+            echo "Applying extra patch: $EXTRA_PATCH_URL"
+            curl -fsSL -o /tmp/ksu_extra.patch "$EXTRA_PATCH_URL" \
+              || die "Failed to download $EXTRA_PATCH_URL"
+            patch -d "$KSU_DIR" -p1 --batch < /tmp/ksu_extra.patch \
+              || die "Extra patch failed on $KSU_MANAGER (ref: ${REF:-latest tag})"
+          fi
+
+          scripts/config --file "arch/arm64/configs/$DEFCONFIG_NAME" -e CONFIG_KSU
+
+          VER=$(git -C "$KSU_DIR" describe --tags --always 2>/dev/null || echo Unknown)
+          echo "$KSU_MANAGER setup done ($VER)"
+          echo "- Root manager: **$KSU_MANAGER** ($VER)" >> "$GITHUB_STEP_SUMMARY"
+          
+      - name: "🧬 Apply SUSFS kernel patch"
+        if: matrix.variant == 'ksu'
+        working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
+        env:
+          SUSFS_BRANCH: gki-android13-5.15
+        run: |
+          set -euo pipefail
+          die() { echo "::error::$*"; exit 1; }
+
+          SUSFS_DIR=/tmp/susfs4ksu
+          KP="$SUSFS_DIR/kernel_patches"
+          [ -d "$SUSFS_DIR" ] || git clone --depth=1 -b "$SUSFS_BRANCH" https://gitlab.com/simonpunk/susfs4ksu.git "$SUSFS_DIR"
+
+          # Fake patch: sembunyikan include vendor-hook sementara supaya konteks patch SUSFS cocok
+          hide_inc() { # file header
+            grep -qxF "#include <trace/hooks/$2>" "$1" && sed -i "\|^#include <trace/hooks/$2>\$|d" "$1"
+          }
+          restore_inc() { # file header anchor
+            grep -q "trace/hooks/$2" "$1" && return 0
+            if grep -qxF "$3" "$1"; then
+              sed -i "\|^$3\$|a #include <trace/hooks/$2>" "$1"
+            else
+              echo "::warning::anchor '$3' tidak ada di $1, kembalikan include trace/hooks/$2 secara manual"
+            fi
+          }
+          NS_FAKE=0; MM_FAKE=0
+          hide_inc fs/namespace.c blk.h    && NS_FAKE=1 || echo "blk.h tidak ada di fs/namespace.c, fake patch dilewati"
+          hide_inc fs/proc/task_mmu.c mm.h && MM_FAKE=1 || echo "mm.h tidak ada di fs/proc/task_mmu.c, fake patch dilewati"
+
+          # Patch kernel SUSFS: lanjut walau ada hunk gagal, tapi tampilkan hasilnya
+          if patch -p1 --batch < "$KP/50_add_susfs_in_gki-android13-5.15.patch"; then
+            echo "SUSFS kernel patch applied"
+          else
+            echo "::warning::SUSFS kernel patch sebagian gagal, file .rej:"
+            find . -name '*.rej' -not -path './out/*' | head -20
+          fi
+
+          # Salin sumber SUSFS (selalu timpa)
+          for f in fs/susfs.c include/linux/susfs.h include/linux/susfs_def.h; do
+            if [ -f "$KP/$f" ]; then
+              install -D -m 0644 "$KP/$f" "$f" && echo "copied $f"
+            else
+              echo "::warning::$f tidak ada di repo SUSFS"
+            fi
+          done
+          [ -f fs/susfs.c ] && [ -f include/linux/susfs.h ] || die "fs/susfs.c atau include/linux/susfs.h tidak ada"
+
+          # Config SUSFS
+          opts=()
+          for o in KSU_SUSFS KSU_SUSFS_SUS_PATH KSU_SUSFS_SUS_MOUNT KSU_SUSFS_SUS_KSTAT \
+                   KSU_SUSFS_SPOOF_UNAME KSU_SUSFS_ENABLE_LOG KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS \
+                   KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG KSU_SUSFS_OPEN_REDIRECT KSU_SUSFS_SUS_MAP; do
+            opts+=(-e "CONFIG_$o")
+          done
+          scripts/config --file "arch/arm64/configs/$DEFCONFIG_NAME" "${opts[@]}"
+
+          # Kembalikan include yang tadi disembunyikan
+          if [ "$NS_FAKE" = 1 ]; then restore_inc fs/namespace.c blk.h '#include "internal.h"'; fi
+          if [ "$MM_FAKE" = 1 ]; then restore_inc fs/proc/task_mmu.c mm.h '#include <linux/pkeys.h>'; fi
+
+          echo "SUSFS kernel-side integration done"
+                       
       - name: "🔨 Build kernel"
         if: github.event.inputs.buildToolchains == 'android-tools'
         working-directory: ${{ env.WORK_DIR }}
