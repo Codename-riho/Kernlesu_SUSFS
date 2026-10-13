@@ -489,15 +489,7 @@ jobs:
           if [ "$MM_FAKE" = 1 ]; then restore_inc fs/proc/task_mmu.c mm.h '#include <linux/pkeys.h>'; fi
 
           echo "SUSFS kernel-side integration done"
-
-      - name: "☀️ Make defconfig"
-        if: github.event.inputs.buildToolchains == 'android-tools'
-        working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
-        env:
-          args: ${{ steps.generate-args.outputs.args }}
-        run: |
-          make ${{ env.args }} ${{ env.DEFCONFIG_NAME }}
-                       
+          
       - name: "❄️ Build kernel"
         if: github.event.inputs.buildToolchains == 'android-tools'
         working-directory: ${{ env.WORK_DIR }}
