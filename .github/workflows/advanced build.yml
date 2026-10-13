@@ -506,6 +506,10 @@ jobs:
 
           echo "🎉 ReSukiSU installed and SUSFS for GKI android13-5.15 fully integrated!"
 
+      - name: "🏗️ Install build dependencies "
+        run: | 
+            sudo apt-get update sudo apt-get install -y clang build-essential bc bison flex libssl-dev libelf-dev libncurses-dev
+
       - name: "🔨 Build kernel"
         if: github.event.inputs.buildToolchains == 'android-tools'
         working-directory: ${{ env.WORK_DIR }}
