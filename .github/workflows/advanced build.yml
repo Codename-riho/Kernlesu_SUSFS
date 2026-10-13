@@ -1,4 +1,6 @@
 name: "Advanced Build (forked from topnotchfreaks)"
+permissions: 
+     contents: read
 
 env:
   OUT_DIR: "out"
@@ -97,6 +99,7 @@ jobs:
     name: "🚀 Build Kernel"
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         variant: ${{ fromJSON(
           inputs.buildKSU == 'both' && '["noksu", "ksu"]' ||
@@ -114,7 +117,7 @@ jobs:
           mkdir -p $kernelDir
            echo "BUILD_TIME=$(TZ=Asia/Jakarta date +'%Y-%m-%d')" >> $GITHUB_ENV
           sudo apt-get update -qq
-          sudo apt-get install -y repo rsync aria2 build-essential bc curl flex cpio rsync git zip dwarves libelf-dev gcc-aarch64-linux-gnu libssl-dev python3 clang lld llvm llvm-dev
+          sudo apt-get install -y repo rsync aria2 build-essential bc curl flex cpio rsync git zip dwarves libelf-dev gcc-aarch64-linux-gnu libssl-dev python3 clang lld llvm llvm-dev bison libncurses-dev
           
       - name: "🧹 Aggressive Cleanup"
         run: |
