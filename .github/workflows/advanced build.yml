@@ -497,6 +497,7 @@ jobs:
           LTO: ${{ inputs.LtoOptimizations }}
           BUILD_CONFIG: ${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki.aarch64
         run: |
+          set -o pipefail
           if [ "${{ github.event.inputs.LtoOptimizations }}" = "thin" ]; then
            LTO=thin BUILD_CONFIG=${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki.aarch64 build/build.sh -j$(nproc --all)
           else
@@ -525,6 +526,19 @@ jobs:
             OBJCOPY=llvm-objcopy \
             STRIP=llvm-strip \
             -j$(nproc --all)
+
+      - name: "🚨 Kumpulkan Log Error (Jika Gagal)"
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-logs-${{ matrix.variant }}
+          path: |
+            ${{ env.WORK_DIR }}/build_full.log
+            ${{ env.WORK_DIR }}/out/${{ env.kernelDir }}/${{ env.kernelName }}/.config
+            ${{ env.WORK_DIR }}/${{ env.kernelDir }}/${{ env.kernelName }}/out/.config
+            ${{ env.WORK_DIR }}/${{ env.kernelDir }}/${{ env.kernelName }}/*.rej
+          retention-days: 3
+          if-no-files-found: ignore
           
       - name: 📦 Prepare artifact
         working-directory: ${{ env.WORK_DIR }}
@@ -538,7 +552,7 @@ jobs:
          fi
 
          cp "${src}" "out/dist/Image.${{ matrix.variant }}"
-    
+         
       - name: "📤 Upload kernel"
         uses: actions/upload-artifact@v4
         with:
