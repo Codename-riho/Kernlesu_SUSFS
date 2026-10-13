@@ -107,52 +107,53 @@ jobs:
 
       - name: "📥 Initialize repo"
         if: github.event.inputs.buildToolchains == 'android-tools'
-        working-directory: ${{ env.WORK_DIR}}
+        working-directory: ${{ env.WORK_DIR }}
+        shell: bash
         run: |
-        # Konfigurasi global git untuk transfer file besar
+          set -euxo pipefail
+
           git config --global http.postBuffer 524288000
           git config --global http.lowSpeedLimit 1000
           git config --global http.lowSpeedTime 600
-          
-         repo init -u https://android.googlesource.com/kernel/manifest -b common-android13-5.15-lts --depth=1
-         repo sync --optimized-fetch --prune --no-clone-bundle --no-tags -j$(nproc --all)
-    
-         rm -rf .repo
-         rm -rf common
 
-         # Replace the synced Clang prebuilts
-         rm -rf prebuilts/clang/host/linux-x86
-         git clone --depth=1 --branch main-kernel \
-           https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 \
-           prebuilts/clang/host/linux-x86
+          repo init -u https://android.googlesource.com/kernel/manifest -b common-android13-5.15-lts --depth=1
+          repo sync --optimized-fetch --prune --no-clone-bundle --no-tags -j"$(nproc --all)"
 
-         # Remove any other Clang versions that might have been synced
-         rm -rf prebuilts/clang/host/linux-x86/clang-3289846 \
-           prebuilts/clang/host/linux-x86/clang-r547379 \
-           prebuilts/clang/host/linux-x86/clang-r584948 \
-           prebuilts/clang/host/linux-x86/clang-r596125 \
-           prebuilts/clang/host/linux-x86/claang-r596125 \
-           prebuilts/clang/host/linux-x86/clang-stable
+          rm -rf .repo common
 
-         sed -i \
-          -e 's/^BRANCH=.*/BRANCH=android13-5.15/' \
-          -e 's/^CLANG_VERSION=.*/CLANG_VERSION=r614650/' \
-         ${{ env.kernelDir }}/${{ env.kernelName }}/build.config.constants
-    
-         sed -i '/^DEFCONFIG=gki_defconfig/d' ${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki
-         sed -i '$a\DEFCONFIG=${{ env.DEFCONFIG_NAME }}' ${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki
-         sed -i '/^POST_DEFCONFIG_CMDS="check_defconfig"/d' ${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki
+          # Replace the synced Clang prebuilts
+          rm -rf prebuilts/clang/host/linux-x86
+          git clone --depth=1 --branch main-kernel \
+            https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 \
+            prebuilts/clang/host/linux-x86
 
-         sed -i \
-          -e '/^KMI_SYMBOL_LIST_STRICT_MODE=/d' \
-          -e '/^TRIM_NONLISTED_KMI=/d' \
-          -e '/^KMI_ENFORCED=/d' \
-          -e '$a\KMI_SYMBOL_LIST_STRICT_MODE=0' \
-          -e '$a\TRIM_NONLISTED_KMI=0' \
-          -e '$a\KMI_ENFORCED=0' \
-          -e '/^MODULES_ORDER=/d' \
-          -e '/^MODULES_LIST=/d' \
-         ${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki.aarch64
+          # Remove any other Clang versions that might have been synced
+          rm -rf prebuilts/clang/host/linux-x86/clang-3289846 \
+            prebuilts/clang/host/linux-x86/clang-r547379 \
+            prebuilts/clang/host/linux-x86/clang-r584948 \
+            prebuilts/clang/host/linux-x86/clang-r596125 \
+            prebuilts/clang/host/linux-x86/claang-r596125 \
+            prebuilts/clang/host/linux-x86/clang-stable
+
+          sed -i \
+            -e 's/^BRANCH=.*/BRANCH=android13-5.15/' \
+            -e 's/^CLANG_VERSION=.*/CLANG_VERSION=r614650/' \
+            ${{ env.kernelDir }}/${{ env.kernelName }}/build.config.constants
+
+          sed -i '/^DEFCONFIG=gki_defconfig/d' ${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki
+          sed -i '$a\DEFCONFIG=${{ env.DEFCONFIG_NAME }}' ${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki
+          sed -i '/^POST_DEFCONFIG_CMDS="check_defconfig"/d' ${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki
+
+          sed -i \
+            -e '/^KMI_SYMBOL_LIST_STRICT_MODE=/d' \
+            -e '/^TRIM_NONLISTED_KMI=/d' \
+            -e '/^KMI_ENFORCED=/d' \
+            -e '$a\KMI_SYMBOL_LIST_STRICT_MODE=0' \
+            -e '$a\TRIM_NONLISTED_KMI=0' \
+            -e '$a\KMI_ENFORCED=0' \
+            -e '/^MODULES_ORDER=/d' \
+            -e '/^MODULES_LIST=/d' \
+            ${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki.aarch64
      
       - name: "💫 Get Toolchains"
         if: github.event.inputs.buildToolchains == 'custom-tools'
@@ -384,7 +385,7 @@ jobs:
           
       - name: "🔧 Add NoMount Support"
         if: matrix.variant == 'ksu'
-        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        working-directory: ${{ env.WORK_DIR }}/${{ env.kernelDir }}/${{ env.kernelName }}
         run: |
           curl -LSs "https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh" | bash -
           
@@ -592,7 +593,7 @@ jobs:
           echo "✅ Package created: $ZIP_NAME"
 
       - name: "📤 Upload kernel ZIP artifact"
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           path: ${{ env.ZIP_NAME }}
           archive: false
