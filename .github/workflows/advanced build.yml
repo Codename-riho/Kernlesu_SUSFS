@@ -349,61 +349,6 @@ jobs:
         run: |
           curl -LSs "https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh" | bash -
           
-      - name: "⚔️ Setup SukiSU-Ultra"
-        if: matrix.variant == 'ksu'
-        working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
-        run: |
-          rm -rf ./KernelSU ./drivers/kernelsu
-
-          echo "📦 Installing KSU..."
-          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s builtin
-          
-          echo "✔ KSU installed successfully"
-          
-          # Clone SUSFS4KSU for kernel patches only (not KSU integration)
-          echo "📦 Cloning SUSFS4KSU for kernel patches..."
-          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android13-5.15
-
-          echo "☣️ Applying namespace.c Fake Patch (if applicable)"
-          if grep -q '^#include <trace/hooks/blk.h>$' fs/namespace.c; then
-            sed -i '/^#include <trace\/hooks\/blk.h>$/d' fs/namespace.c
-            NS_FAKE_PATCHED=1
-          else
-            echo "ℹ️ blk.h include not present in fs/namespace.c — skipping fake patch"
-            NS_FAKE_PATCHED=0
-          fi
-
-          echo "☣️ Applying task_mmu.c Fake Patch (if applicable)"
-          if grep -q '^#include <trace/hooks/mm.h>$' fs/proc/task_mmu.c; then
-            sed -i '/^#include <trace\/hooks\/mm.h>$/d' fs/proc/task_mmu.c
-            MM_FAKE_PATCHED=1
-          else
-            echo "ℹ️ mm.h include not present in fs/proc/task_mmu.c — skipping fake patch"
-            MM_FAKE_PATCHED=0
-          fi
-          
-          SUSFS_KERNEL_PATCH="susfs4ksu/kernel_patches/50_add_susfs_in_gki-android13-5.15.patch"
-          
-          echo "🔧 Applying SUSFS kernel patch..."
-          if patch -p1 < "$SUSFS_KERNEL_PATCH"; then
-            echo "✅ SUSFS patch successfully applied"
-          else
-            echo "⚠️ SUSFS patch failed — copying files manually"
-          fi
-
-          echo "🔧 Applying SUSFS -> KernelSU patch..."
-          KSU_PATCH="susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch"
-          
-          echo "📄 Forcing SUSFS source injection..."
-          
-          # Always replace fs/susfs.c
-          mkdir -p fs
-          cp -f susfs4ksu/kernel_patches/fs/susfs.c fs/susfs.c
-          echo "✔ Copied fs/susfs.c"
-          
-          # Always replace include/linux/susfs.h
-          mkdir -p include/linux
-          cp -f susfs4ksu/kernel_patches/include/linux/susfs.h include/linux/susfs.h
       - name: "⚔️ Setup root manager (${{ inputs.ksuManager }})"
         if: matrix.variant == 'ksu'
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
@@ -541,10 +486,21 @@ jobs:
           if [ "$MM_FAKE" = 1 ]; then restore_inc fs/proc/task_mmu.c mm.h '#include <linux/pkeys.h>'; fi
 
           echo "SUSFS kernel-side integration done"
+
+      - name: "☀️ Make defconfig"
+        if: github.event.inputs.buildToolchains == 'android-tools'
+        working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
+        env:
+          args: ${{ steps.generate-args.outputs.args }}
+        run: |
+          make ${{ env.args }} ${{ env.DEFCONFIG_NAME }}
                        
-      - name: "🔨 Build kernel"
+      - name: "❄️ Build kernel"
         if: github.event.inputs.buildToolchains == 'android-tools'
         working-directory: ${{ env.WORK_DIR }}
+        env:
+          LTO: ${{ inputs.LtoOptimizations }}
+          BUILD_CONFIG: ${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki.aarch64
         run: |
           if [ "${{ github.event.inputs.LtoOptimizations }}" = "thin" ]; then
            LTO=thin BUILD_CONFIG=${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki.aarch64 build/build.sh -j$(nproc --all)
