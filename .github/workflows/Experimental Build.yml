@@ -1,0 +1,643 @@
+name: "Build Cryo-Kernel-Daily"
+
+env:
+  OUT_DIR: "out"
+  KERNEL_VERSION: "5.15"
+  ANDROID_VERSION: "13"
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+     inputs:
+      ksu_manager:
+        description: "Root manager untuk varian KSU"
+        type: choice
+        options:
+          - BakaSU          
+          - SukiSU-Ultra
+          - KernelSU-Next-pershoot
+          - KernelSU-Next 
+          - KernelSU-Official
+          - Rissu-KSU 
+        default: BakaSU
+      ksu_ref:
+        description: "Opsional: branch/tag manager (kosong = bawaan tiap manager)"
+        required: false
+        default: 
+        
+jobs:
+  build-kernels:
+    name: "❄️ Build Cryo ${{ matrix.kernel.name }} kernel"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        kernel:
+          - name: "GKI"
+            dir: "common_gki"
+            repo_name: "common"
+            repo_url: "https://android.googlesource.com/kernel/common"
+            branch: "android13-5.15-lts"
+            defconfig: "gki_defconfig"
+            local_version: "-Cryo-GKI"
+            output_name: "Image.gki.ksu"
+            enable_ksu: true
+            extra_patches:
+              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-gki-fixup.patch"
+              - "https://raw.githubusercontent.com/Dyatz/Topaz_resukisu_SUSFS/refs/heads/main/patches/0001-scripts-sign-builds.patch"
+              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
+              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-do-not-ship-full-auto_localversion.patch"
+          - name: "CLO"
+            dir: "common_clo"
+            repo_name: "clo"
+            repo_url: "https://git.codelinaro.org/clo/la/kernel/msm-5.15.git"
+            branch: "kernel.lnx.5.15.r1-rel"
+            defconfig: "gki_defconfig"
+            local_version: "-Cryo-CLO"
+            output_name: "Image.clo.ksu"
+            enable_ksu: true
+            extra_patches:
+              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-gki-fixup.patch"
+              - "https://raw.githubusercontent.com/Dyatz/Topaz_resukisu_SUSFS/refs/heads/main/patches/0001-scripts-sign-builds.patch"
+              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
+              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-do-not-ship-full-auto_localversion.patch"
+          - name: "GKI-NoKSU"
+            dir: "common_gki_noksu"
+            repo_name: "common"
+            repo_url: "https://android.googlesource.com/kernel/common"
+            branch: "android13-5.15-lts"
+            defconfig: "gki_defconfig"
+            local_version: "-Cryo-GKI"
+            output_name: "Image.gki.noksu"
+            enable_ksu: false
+            extra_patches:
+              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-gki-fixup.patch"
+              - "https://raw.githubusercontent.com/Dyatz/Topaz_resukisu_SUSFS/refs/heads/main/patches/0001-scripts-sign-builds.patch"
+              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
+              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-do-not-ship-full-auto_localversion.patch"
+          - name: "CLO-NoKSU"
+            dir: "common_clo_noksu"
+            repo_name: "clo"
+            repo_url: "https://git.codelinaro.org/clo/la/kernel/msm-5.15.git"
+            branch: "kernel.lnx.5.15.r1-rel"
+            defconfig: "gki_defconfig"
+            local_version: "-Cryo-CLO"
+            output_name: "Image.clo.noksu"
+            enable_ksu: false
+            extra_patches:
+              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-gki-fixup.patch"
+              - "https://raw.githubusercontent.com/Dyatz/Topaz_resukisu_SUSFS/refs/heads/main/patches/0001-scripts-sign-builds.patch"
+              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
+              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-do-not-ship-full-auto_localversion.patch"
+
+    env:
+      KERNEL_LOC_DIR: ${{ matrix.kernel.dir }}
+      KERNEL_NAME: ${{ matrix.kernel.repo_name }}
+      KERNEL_REPO: ${{ matrix.kernel.repo_url }}
+      KERNEL_BRANCH: ${{ matrix.kernel.branch }}
+      DEFCONFIG_NAME: ${{ matrix.kernel.defconfig }}
+      LOCAL_VERSION: ${{ matrix.kernel.local_version }}
+      OUTPUT_NAME: ${{ matrix.kernel.output_name }}
+      WORK_DIR: ${{ github.workspace }}
+
+    steps:
+      - name: "✨ Setup workspace"
+        run: |
+          mkdir -p ${{ env.KERNEL_LOC_DIR }}
+          echo "BUILD_TIME=$(TZ=Asia/Jakarta date +'%Y-%m-%d')" >> $GITHUB_ENV
+          sudo apt-get update -qq
+          sudo apt-get install -y repo rsync aria2
+
+      - name: 🧹 Aggressive Cleanup
+        run: |
+          # Remove heavy pre-installed tools
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          
+          # Prune Docker to remove hidden images and build cache
+          sudo docker image prune --all --force
+          sudo docker builder prune -a -f
+          
+      - name: 📐 Setup SWAP 20GB
+        uses: pierotofy/set-swap-space@master
+        with:
+            swap-size-gb: 20
+            
+      - name: 📐 Tune Swap
+        run: |
+            echo "vm.swappiness=80" | sudo tee -a /etc/sysctl.conf
+            sudo sysctl -p
+
+      - name: "🌟 Clone kernel source"
+        working-directory: ./${{ env.KERNEL_LOC_DIR }}
+        run: |
+          # Atur buffer git untuk mencegah early EOF
+          git config --global http.postBuffer 524288000
+
+           # Retry loop untuk clone (mencegah error putus koneksi sesaat)
+          for i in {1..3}; do
+            git clone --recursive --branch ${{ env.KERNEL_BRANCH }} \
+              ${{ env.KERNEL_REPO }} ${{ env.KERNEL_NAME }} --depth=1 && break || {
+              echo "⚠️ Clone gagal, mencoba ulang ($i/3)..."
+              sleep 5
+            }
+          done
+            
+      - name: "📥 Initialize AOSP repo and toolchains"
+        working-directory: ${{ env.WORK_DIR }}
+        run: |
+          # Konfigurasi global git untuk transfer file besar
+          git config --global http.postBuffer 524288000
+          git config --global http.lowSpeedLimit 1000
+          git config --global http.lowSpeedTime 600
+          
+          # Initialize AOSP repo
+          repo init -u https://android.googlesource.com/kernel/manifest -b common-android13-5.15-lts --depth=1
+          repo sync --optimized-fetch --prune -j4
+          
+          # Clean up existing repo and common directories
+          rm -rf .repo
+          rm -rf common
+
+          # Download and setup custom clang toolchain
+          aria2c -x 16 -s 16 -o prebuilts/clang/host/linux-x86/clang-r547379.tar.gz "https://github.com/topnotchfreaks/clang/releases/download/v1.0.0/clang-r547379.tar.gz"
+          mkdir -p prebuilts/clang/host/linux-x86/clang-r547379
+          tar -xzf prebuilts/clang/host/linux-x86/clang-r547379.tar.gz -C prebuilts/clang/host/linux-x86/clang-r547379
+          rm -rf prebuilts/clang/host/linux-x86/clang-r547379.tar.gz
+
+          # Remove unused clang for more space
+          rm -rf prebuilts/clang/host/linux-x86/clang-3289846
+          rm -rf prebuilts/clang/host/linux-x86/clang-r450784e
+          rm -rf prebuilts/clang/host/linux-x86/clang-r596125
+          rm -rf prebuilts/clang/host/linux-x86/clang-stable
+          
+          # Update build config constants
+          sed -i \
+           -e 's/^BRANCH=.*/BRANCH=android13-5.15/' \
+           -e 's/^CLANG_VERSION=.*/CLANG_VERSION=r547379/' \
+           ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}/build.config.constants
+          
+          # Remove defconfig check (if exists)
+          sed -i '/^POST_DEFCONFIG_CMDS="check_defconfig"/d' ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}/build.config.gki || true
+      
+      - name: "🧩 Configure kernel & patches"
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        run: |
+          CONFIG_FILE="arch/arm64/configs/${{ env.DEFCONFIG_NAME }}"
+          
+          # Fix localversion
+          sed -i 's/CONFIG_LOCALVERSION_AUTO=y/# CONFIG_LOCALVERSION_AUTO is not set/g' "$CONFIG_FILE" || true
+          echo "CONFIG_LOCALVERSION=\"${{ env.LOCAL_VERSION }}\"" >> "$CONFIG_FILE"
+          
+          apply_patch() {
+            local url="$1"
+            local file=$(basename "$url")
+            curl -L -o "$file" "$url"
+            
+            # Cek apakah patch sudah terpasang (Logika pintar dari Claude)
+            if patch -p1 -R --dry-run -s -f < "$file" > /dev/null 2>&1; then
+              echo "✅ Sudah terpasang, dilewati: $file"
+            else
+              # Jika belum terpasang, paksa pasang. Jika gagal, HENTIKAN BUILD (Rem darurat)
+              patch -p1 --batch < "$file" || { echo "::error::Hunks failed in $file (Konflik kode serius!)"; exit 1; }
+              echo "✅ Berhasil dipasang: $file"
+            fi
+            rm -f "$file"
+          }
+          
+          apply_patch "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-gki-fixup.patch"
+
+          echo '${{ toJSON(matrix.kernel.extra_patches) }}' | jq -r '.[]' | while read p; do
+            [ -n "$p" ] && apply_patch "$p"
+          done
+          
+          # Use scripts/config for safe config manipulation
+          scripts/config --file "$CONFIG_FILE" \
+            -e CONFIG_KALLSYMS \
+            -e CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE \
+            -e CONFIG_TCP_CONG_ADVANCED \
+            -d CONFIG_TCP_CONG_BIC \
+            -d CONFIG_TCP_CONG_HTCP \
+            -e CONFIG_TCP_CONG_WESTWOOD \
+            -e CONFIG_TCP_CONG_BBR \
+            -e CONFIG_DEFAULT_BBR \
+            -e CONFIG_OVERLAY_FS \
+            -e CONFIG_TMPFS_XATTR \
+            -e CONFIG_TMPFS_POSIX_ACL \
+            -e CONFIG_WQ_POWER_EFFICIENT_DEFAULT \
+            -e CONFIG_PM_WAKELOCKS \
+            --set-val CONFIG_PM_WAKELOCKS_LIMIT 100 \
+            -e CONFIG_PM_WAKELOCKS_GC \
+            -e CONFIG_SUSPEND \
+            -e CONFIG_SUSPEND_FREEZER \
+            -e CONFIG_CRYPTO_LZ4 \
+            -e CONFIG_KERNEL_LZ4 \
+            -e ZRAM_DEF_COMP_LZ4 \
+            -d CONFIG_KERNEL_GZIP \
+            -d CONFIG_KERNEL_LZO \
+            -d CONFIG_KERNEL_XZ
+          
+          # Remove duplicate lines safely
+          sed -i '/ZRAM_DEF_COMP_LZO/d' "$CONFIG_FILE" || true
+          
+      - name: "🏷️ Force short localversion"
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        run: |
+          VER="${{ env.LOCAL_VERSION }}-${{ env.BUILD_TIME }}"
+          cat > scripts/setlocalversion << EOF
+          #!/bin/sh
+          # Cryo: fixed short localversion (ignore git tags/dirty)
+          printf '%s' "$VER"
+          EOF
+          chmod +x scripts/setlocalversion
+          rm -f .scmversion localversion*
+          echo "Localversion: $VER"
+                    
+      - name: "🚀 Add Droidspaces Support (fix KABI sysvipc)"
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        run: |
+          curl -sL "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch" | git apply -v --ignore-whitespace || { echo "::error::Droidspaces patch failed"; exit 1; }
+          
+      - name: "😋 Add BBG Support"
+        if: matrix.kernel.enable_ksu == true
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        run: |
+          wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
+          scripts/config --file arch/arm64/configs/${{ env.DEFCONFIG_NAME }} -e CONFIG_BBG
+          sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' security/Kconfig
+          
+      - name: "🔧 Add NoMount Support"
+        if: matrix.kernel.enable_ksu == true
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        run: |
+          curl -LSs "https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh" | bash -
+          
+      - name: "⚔️ Setup root manager (${{ inputs.ksu_manager }})"
+        if: matrix.kernel.enable_ksu == true
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        env:
+          KSU_MANAGER: ${{ inputs.ksu_manager || 'BakaSU' }}
+          KSU_REF: ${{ inputs.ksu_ref }}
+          SUSFS_BRANCH: gki-android13-5.15
+        run: |
+          set -euo pipefail
+          die() { echo "::error::$*"; exit 1; }
+
+          MULTI_MANAGER_PATCH="https://raw.githubusercontent.com/RapliVx/kernel_builder/refs/heads/main/patch/ksun-add-more-managers-support.patch"
+          EXTRA_PATCH_URL=""
+
+          # Per manager: repo, branch hosting setup.sh, default ref,
+          # whether the SUSFS patch is needed (0 = built-in support),
+          # and an optional extra patch URL applied after setup.
+          case "$KSU_MANAGER" in
+            BakaSU)                 REPO="Baka-SU/BakaSU";              SETUP_BRANCH=main;      DEFAULT_REF=main;      NEED_SUSFS_PATCH=0 ;;
+            SukiSU-Ultra)           REPO="SukiSU-Ultra/SukiSU-Ultra";   SETUP_BRANCH=main;      DEFAULT_REF=builtin;   NEED_SUSFS_PATCH=0 ;;
+            KernelSU-Next)          REPO="KernelSU-Next/KernelSU-Next"; SETUP_BRANCH=next;      DEFAULT_REF="";        NEED_SUSFS_PATCH=1 ;;
+            KernelSU-Next-pershoot) REPO="pershoot/KernelSU-Next";      SETUP_BRANCH=dev-susfs; DEFAULT_REF=dev-susfs; NEED_SUSFS_PATCH=0; EXTRA_PATCH_URL="$MULTI_MANAGER_PATCH" ;;
+            KernelSU-Official)      REPO="tiann/KernelSU";              SETUP_BRANCH=main;      DEFAULT_REF="";        NEED_SUSFS_PATCH=1 ;;
+            Rissu-KSU)              REPO="rsuntk/KernelSU";             SETUP_BRANCH=main;      DEFAULT_REF="";        NEED_SUSFS_PATCH=1 ;;
+            *) die "Unknown manager: $KSU_MANAGER" ;;
+          esac
+
+          REF="${KSU_REF:-$DEFAULT_REF}"
+          SETUP_URL="https://raw.githubusercontent.com/${REPO}/${SETUP_BRANCH}/kernel/setup.sh"
+          echo "Manager: $KSU_MANAGER | ref: ${REF:-latest release tag}"
+          echo "Setup script: $SETUP_URL"
+
+          # Remove any previous install, then run the manager's setup script
+          rm -rf ./KernelSU ./KernelSU-Next ./drivers/kernelsu
+          curl -fsSL -o /tmp/ksu_setup.sh "$SETUP_URL" \
+            || die "Failed to download $SETUP_URL"
+          bash -x /tmp/ksu_setup.sh ${REF:+"$REF"} \
+            || die "setup.sh for $KSU_MANAGER failed (ref: ${REF:-latest tag})"
+
+          # The install dir name differs per manager (KernelSU, KernelSU-Next, ...),
+          # so resolve it from the drivers/kernelsu symlink instead of hardcoding it.
+          if [ ! -d drivers/kernelsu ]; then
+            ls -ld KernelSU* drivers/kernelsu 2>&1 || true
+            die "drivers/kernelsu symlink is missing or broken"
+          fi
+          KSU_DIR=$(dirname "$(readlink -f drivers/kernelsu)")
+          echo "Install dir: $KSU_DIR"
+
+          # Managers without built-in SUSFS need the integration patch
+          if [ "$NEED_SUSFS_PATCH" = 1 ]; then
+            echo "Applying SUSFS patch (branch: $SUSFS_BRANCH)"
+            rm -rf /tmp/susfs4ksu
+            git clone --depth=1 -b "$SUSFS_BRANCH" https://gitlab.com/simonpunk/susfs4ksu.git /tmp/susfs4ksu && break
+            PATCH_FILE=/tmp/susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch
+            [ -f "$PATCH_FILE" ] || die "SUSFS patch not found: $PATCH_FILE"
+            patch -d "$KSU_DIR" -p1 --batch < "$PATCH_FILE" \
+              || die "SUSFS patch incompatible with $KSU_MANAGER (ref: ${REF:-latest tag}). Try an older tag."
+          else
+            echo "SUSFS patch not needed for $KSU_MANAGER (built-in)"
+          fi
+
+          # Optional extra patch (e.g. multi-manager support)
+          if [ -n "$EXTRA_PATCH_URL" ]; then
+            echo "Applying extra patch: $EXTRA_PATCH_URL"
+            curl -fsSL -o /tmp/ksu_extra.patch "$EXTRA_PATCH_URL" \
+              || die "Failed to download $EXTRA_PATCH_URL"
+            patch -d "$KSU_DIR" -p1 --batch < /tmp/ksu_extra.patch \
+              || die "Extra patch failed on $KSU_MANAGER (ref: ${REF:-latest tag})"
+          fi
+
+          # Enable KernelSU in the defconfig and report
+          scripts/config --file "arch/arm64/configs/$DEFCONFIG_NAME" -e CONFIG_KSU
+
+          VER=$(git -C "$KSU_DIR" describe --tags --always 2>/dev/null || echo Unknown)
+          echo "$KSU_MANAGER setup done ($VER)"
+          echo "- Root manager: **$KSU_MANAGER** ($VER)" >> "$GITHUB_STEP_SUMMARY"
+          
+      - name: "🚀 Inject SUSFS Integration"
+        if: matrix.kernel.enable_ksu == true
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        run: |
+          # Clone SUSFS4KSU for kernel patches only (not KSU integration)
+          echo "📦 Cloning SUSFS4KSU for kernel patches..."
+          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android13-5.15 && break
+
+          echo "☣️ Applying namespace.c Fake Patch (if applicable)"
+          if grep -q '^#include <trace/hooks/blk.h>$' fs/namespace.c; then
+            sed -i '/^#include <trace\/hooks\/blk.h>$/d' fs/namespace.c
+            NS_FAKE_PATCHED=1
+          else
+            echo "ℹ️ blk.h include not present in fs/namespace.c — skipping fake patch"
+            NS_FAKE_PATCHED=0
+          fi
+
+          echo "☣️ Applying task_mmu.c Fake Patch (if applicable)"
+          if grep -q '^#include <trace/hooks/mm.h>$' fs/proc/task_mmu.c; then
+            sed -i '/^#include <trace\/hooks\/mm.h>$/d' fs/proc/task_mmu.c
+            MM_FAKE_PATCHED=1
+          else
+            echo "ℹ️ mm.h include not present in fs/proc/task_mmu.c — skipping fake patch"
+            MM_FAKE_PATCHED=0
+          fi
+          
+          SUSFS_KERNEL_PATCH="susfs4ksu/kernel_patches/50_add_susfs_in_gki-android13-5.15.patch"
+          
+          echo "🔧 Applying SUSFS kernel patch..."
+          if patch -p1 < "$SUSFS_KERNEL_PATCH"; then
+            echo "✅ SUSFS patch successfully applied"
+          else
+            echo "⚠️ SUSFS patch failed — copying files manually"
+          fi
+
+          echo "🔧 Applying SUSFS -> KernelSU patch..."
+          KSU_PATCH="susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch"
+          
+          echo "📄 Forcing SUSFS source injection..."
+          
+          # Always replace fs/susfs.c
+          mkdir -p fs
+          cp -f susfs4ksu/kernel_patches/fs/susfs.c fs/susfs.c
+          echo "✔ Copied fs/susfs.c"
+          
+          # Always replace include/linux/susfs.h
+          mkdir -p include/linux
+          cp -f susfs4ksu/kernel_patches/include/linux/susfs.h include/linux/susfs.h
+          echo "✔ Copied include/linux/susfs.h"
+          
+          # Also install missing susfs_def.h
+          if [ -f susfs4ksu/kernel_patches/include/linux/susfs_def.h ]; then
+            cp -f susfs4ksu/kernel_patches/include/linux/susfs_def.h include/linux/susfs_def.h
+            echo "✔ Copied include/linux/susfs_def.h"
+          else
+            echo "⚠️ susfs_def.h not found in repo"
+          fi
+          
+          echo "🔍 Verifying SUSFS files..."
+          for f in fs/susfs.c include/linux/susfs.h include/linux/susfs_def.h; do
+            if [ -f "$f" ]; then echo "✔ Found: $f"; else echo "❌ Missing: $f"; fi
+          done
+          
+          # Clean up SUSFS repo (we only needed kernel patches, not KSU integration)
+          rm -rf susfs4ksu
+          
+          # Create symbolic link for drivers/kernelsu (if needed by build system)
+          if [ ! -L "drivers/kernelsu" ]; then
+            ln -sf ../KernelSU drivers/kernelsu
+            echo "✔ Created drivers/kernelsu symlink"
+          fi
+
+          echo "✅ SUSFS build wiring verified"
+
+          CONFIG_FILE="arch/arm64/configs/${{ env.DEFCONFIG_NAME }}"
+          cat >> "$CONFIG_FILE" << 'EOF'
+          CONFIG_KSU_SUSFS=y
+          CONFIG_KSU_SUSFS_SUS_PATH=y
+          CONFIG_KSU_SUSFS_SUS_MOUNT=y
+          CONFIG_KSU_SUSFS_SUS_KSTAT=y
+          CONFIG_KSU_SUSFS_SPOOF_UNAME=y
+          CONFIG_KSU_SUSFS_ENABLE_LOG=y
+          CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y
+          CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
+          CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
+          CONFIG_KSU_SUSFS_SUS_MAP=y
+          EOF
+
+          echo "↩️ Reverting namespace.c Fake Patch (if applicable)"
+          if [ "$NS_FAKE_PATCHED" = "1" ] && ! grep -q 'trace/hooks/blk.h' fs/namespace.c; then
+            if grep -q '^#include "internal.h"$' fs/namespace.c; then
+              sed -i '/^#include "internal.h"$/a #include <trace/hooks/blk.h>' fs/namespace.c
+              echo "✔ Restored blk.h include"
+            else
+              echo "⚠️ Anchor #include \"internal.h\" not found — could not restore blk.h include, check fs/namespace.c manually"
+            fi
+          else
+            echo "ℹ️ Skipping blk.h restore (not fake-patched or already present)"
+          fi
+
+          echo "↩️ Reverting task_mmu.c Fake Patch (if applicable)"
+          if [ "$MM_FAKE_PATCHED" = "1" ] && ! grep -q 'trace/hooks/mm.h' fs/proc/task_mmu.c; then
+            if grep -q '^#include <linux/pkeys.h>$' fs/proc/task_mmu.c; then
+              sed -i '/^#include <linux\/pkeys.h>$/a #include <trace/hooks/mm.h>' fs/proc/task_mmu.c
+              echo "✔ Restored mm.h include"
+            else
+              echo "⚠️ Anchor #include <linux/pkeys.h> not found — could not restore mm.h include, check fs/proc/task_mmu.c manually"
+            fi
+          else
+            echo "ℹ️ Skipping mm.h restore (not fake-patched or already present)"
+          fi
+          
+          echo "✅ KSU configs added"
+          
+          echo "🎉 SUSFS Integration setup complete!"
+          
+      - name: "📝 Append custom Makefile line"
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        run: |
+         echo 'KBUILD_CFLAGS += -Wno-implicit-function-declaration' >> Makefile
+         
+      - name: "✍️ Set kernel build identity"
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        run: |
+          F=scripts/mkcompile_h
+          [ -f "$F" ] || { echo "::error::$F tidak ditemukan"; exit 1; }
+          if ! grep -qE '^[[:space:]]*LINUX_COMPILE_(BY|HOST)=' "$F"; then
+            echo "::error::Tidak ada penulisan LINUX_COMPILE_BY/HOST di $F"; exit 1
+          fi
+
+          # Baris yang menulis identitas tapi belum bernilai Dyatz / GitHub
+          BAD=$(grep -E '^[[:space:]]*LINUX_COMPILE_(BY|HOST)=' "$F" \
+            | grep -vE 'LINUX_COMPILE_BY="Dyatz"$|LINUX_COMPILE_HOST="GitHub"$' || true)
+
+          if [ -z "$BAD" ]; then
+            echo "⏭️ Identitas kernel sudah sesuai (Dyatz @ GitHub), proses dilewati (skip)."
+          else
+            echo "🔄 Memperbarui identitas kernel..."
+            sed -i -E \
+              -e 's/^([[:space:]]*)LINUX_COMPILE_BY=.*/\1LINUX_COMPILE_BY="Dyatz"/' \
+              -e 's/^([[:space:]]*)LINUX_COMPILE_HOST=.*/\1LINUX_COMPILE_HOST="GitHub"/' "$F"
+
+            BAD=$(grep -E '^[[:space:]]*LINUX_COMPILE_(BY|HOST)=' "$F" \
+              | grep -vE 'LINUX_COMPILE_BY="Dyatz"$|LINUX_COMPILE_HOST="GitHub"$' || true)
+            if [ -n "$BAD" ]; then
+              echo "::error::Identitas kernel belum sesuai:"; echo "$BAD"; exit 1
+            fi
+            echo "✅ Identitas kernel berhasil diubah."
+          fi
+
+          # Tampilkan hasilnya sebagai bukti
+          grep -nE "LINUX_COMPILE_(BY|HOST)" "$F"
+
+      - name: "🔨 Build kernel"
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          KBUILD_BUILD_USER: dyatz
+          KBUILD_BUILD_HOST: GitHub
+        run: |
+          set -o pipefail
+          
+          LTO=full \
+          BUILD_CONFIG=${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}/build.config.gki.aarch64 \
+          build/build.sh -j$(nproc --all) 2>&1 | tee build_full.log
+                    
+      - name: "🚨 Kumpulkan Log Error (Jika Gagal)"
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-logs-${{ matrix.kernel.name }}
+          path: |
+            ${{ env.WORK_DIR }}/build_full.log
+            ${{ env.WORK_DIR }}/out/.config
+            ${{ env.WORK_DIR }}/${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}/*.rej
+          retention-days: 3
+          if-no-files-found: ignore
+          
+      - name: "📁 Copy Vanilla kernel image"
+        if: matrix.kernel.enable_ksu == false
+        working-directory: ${{ env.WORK_DIR }}/out/dist
+        run: |
+          cp Image "${{ env.OUTPUT_NAME }}"
+
+      - name: "📁 Copy KSU kernel image"
+        if: matrix.kernel.enable_ksu == true
+        working-directory: ${{ env.WORK_DIR }}/out/dist
+        run: |
+          cp Image "${{ env.OUTPUT_NAME }}"
+
+      - name: "📤 Upload kernel artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.kernel.name }}-kernel
+          path: ${{ env.WORK_DIR }}/out/dist/${{ env.OUTPUT_NAME }}
+          retention-days: 1
+               
+  package-kernels:
+    name: "📦 Package Kernels"
+    runs-on: ubuntu-latest
+    needs: [build-kernels]
+    permissions:
+      contents: write
+    steps:
+      - name: "📥 Download kernel artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts/
+
+      - name: "📦 Create release package"
+        run: |
+          set -e
+
+          # Clone AnyKernel3
+          git clone --depth=1 https://github.com/Dyatz/Cryo-AnyKernel3.git -b master AnyKernel3
+
+          # Copy kernel images
+          find ./artifacts -name "Image.*" -exec cp {} AnyKernel3/ \;
+          ls AnyKernel3/Image.*
+          
+          # Create banner
+          cat > AnyKernel3/banner << 'EOF'
+          ╔═════════════════════════════════════════════════════╗
+          ║                           __                        ║
+          ║                           ##                        ║
+          ║                          ####                       ║
+          ║                         ##""##                      ║
+          ║                        ##"  "##                     ║
+          ║          ___           ##_  _##           ___       ║
+          ║          "#########_    "####"    _#########"       ║
+          ║            ##_   "##_    "##"    _##"   _##         ║
+          ║             "##_   ##_  _ ## _  _##   _##"          ║
+          ║               ########__######__########            ║
+          ║                       _########_                    ║
+          ║                       "########"                    ║
+          ║               ########""######""########            ║
+          ║             _##"   ##"  " ## "  "##   "##_          ║
+          ║            ##"   _##"    _##_    "##_   "##         ║
+          ║          _#########"    _####_    "#########_       ║
+          ║          """           ##"  "##           """       ║
+          ║                        ##_  _##                     ║
+          ║                         ##__##                      ║
+          ║                          ####                       ║
+          ║                           ##                        ║
+          ║                           ""                        ║
+          ║                                                     ║
+          ║                     CRYO Kernel                     ║
+          ║                    by @Dyatz 685                    ║
+          ║                                                     ║
+          ║              Powered by Github Actions              ║
+          ║                                                     ║
+          ╠═════════════════════════════════════════════════════╣
+          ║                                                     ║
+          ║     Features:                                       ║
+          ║     • Full LTO + -O2 Optimization                   ║
+          ║     • Extra TCP Congestion                          ║
+          ║     • AOSP clang-r547379                            ║
+          ║     • Droidspaces Support                           ║
+          ║     • Baseband-guard v1 Support                     ║
+          ║     • Vanilla & BakaSU (Multi Manager Support).     ║
+          ║     • Integrated with SUSFS (GKI A13-5.15)          ║
+          ║     • Metamodule (Magic-Mount or Mountify) Support  ║
+          ║                                                     ║
+          ║     Please ensure:                                  ║
+          ║     • Your device is compatible                     ║
+          ║     • You have a backup of your current kernel      ║
+          ║                                                     ║
+          ╚═════════════════════════════════════════════════════╝
+          Installing Cryo Kernel...
+          EOF
+
+          # Create ZIP
+          ZIP_NAME="CryoKernel_$(TZ=Asia/Jakarta date +'%Y-%m-%d').zip"
+          cd AnyKernel3
+          zip -r9 "../$ZIP_NAME" * -x .git/*
+          cd ..
+          
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+          echo "✅ Package created: $ZIP_NAME"
+          
+      - name: "📤 Upload kernel ZIP artifact"
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ env.ZIP_NAME }}
+          archive: false
+          retention-days: 30
+          if-no-files-found: error
+          
