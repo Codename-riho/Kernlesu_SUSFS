@@ -239,10 +239,8 @@ jobs:
             -e CONFIG_SUSPEND_FREEZER \
             -e CONFIG_CRYPTO_LZ4 \
             -e CONFIG_KERNEL_LZ4 \
-            -e CONFIG_CRYPTO_ZSTD \
-            -e CONFIG_ZRAM_DEF_COMP_ZSTD \
-            -d ZRAM_DEF_COMP_LZ4 \
-            -d ZRAM_DEF_COMP_LZORLE \
+            -e ZRAM_DEF_COMP_LZ4 \
+            -e ZRAM_DEF_COMP_LZORLE \
             -e CONFIG_LRU_GEN \
             -e CONFIG_LRU_GEN_ENABLED \
             -d CONFIG_KERNEL_GZIP \
