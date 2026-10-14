@@ -640,4 +640,163 @@ jobs:
           archive: false
           retention-days: 30
           if-no-files-found: error
+
+      - name: "📱 Send to Telegram"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
+          KSU_MANAGER: ${{ inputs.ksu_manager || 'BakaSU' }}
+          KSU_REF: ${{ inputs.ksu_ref }}
+          DEVICE_NAME: "Redmi Note 12/13 4G. Pad SE"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # Notifikasi tidak boleh menggagalkan workflow (runner memakai bash -e, jadi errexit dimatikan)
+          set -uo pipefail
+          set +e
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_USER_ID:-}" ]; then
+            echo "::notice::Secret Telegram belum diisi, notifikasi dilewati"; exit 0
+          fi
+
+          API="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}"
+          MAX_BYTES="${TG_MAX_BYTES:-49000000}"   # batas upload bot Telegram 50 MB
+
+          esc() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+          tg() { # method, argumen curl...
+            local resp
+            resp=$(curl -sS "$API/$1" "${@:2}") || { echo "::warning::curl ke Telegram gagal"; return 1; }
+            echo "$resp" | jq -e '.ok' >/dev/null 2>&1 \
+              || { echo "::warning::Telegram menolak: $(echo "$resp" | jq -r '.description // .' 2>/dev/null)"; return 1; }
+          }
+          send_msg() {
+            tg sendMessage --data-urlencode "chat_id=$TELEGRAM_USER_ID" --data-urlencode "parse_mode=HTML" \
+               --data-urlencode 'link_preview_options={"is_disabled":true}' --data-urlencode "text=$1"
+          }
+          send_doc() {
+            tg sendDocument -F "chat_id=$TELEGRAM_USER_ID" -F "document=@$ZIP_NAME" \
+               --form-string "parse_mode=HTML" --form-string "caption=$1"
+          }
+
+          SIZE=$(stat -c%s "$ZIP_NAME")
+          SIZE_H=$(numfmt --to=iec --suffix=B "$SIZE")
+          DATE="${ZIP_NAME#CryoKernel_}"; DATE="${DATE%.zip}"
+          IMAGES=$(cd AnyKernel3 && ls Image.* 2>/dev/null | sed 's/^Image\.//' | paste -sd, - | sed 's/,/, /g')
+          MANAGER="$KSU_MANAGER"
+          if [ -n "$KSU_REF" ]; then MANAGER="$KSU_MANAGER @ $KSU_REF"; fi
+
+          MSG=$(cat <<EOF
+          ✅ <b>Kernel Build Successful</b>
+
+          <b>📦 Build Information:</b>
+          • Kernel: <code>Linux ${KERNEL_VERSION}</code>
+          • Android: <code>13-16</code>
+          • Branch: <code>android13-5.15-lts</code> (GKI), <code>kernel.lnx.5.15.r1-rel</code> (CLO)
+          • Device: <code>$(printf '%s' "$DEVICE_NAME" | esc)</code>
+
+          <b>⚙️ Configuration:</b>
+          • LTO: <code>full</code>
+          • Optimization: <code>-O2</code>
+          • Build Type: <code>both</code> (<code>${IMAGES}</code>)
+          • 🔐 KSU Manager: <code>$(printf '%s' "$MANAGER" | esc)</code>
+          • SUSFS: <code>Enabled (GKI A13-5.15)</code>
+          • Local Version: <code>-Cryo-GKI-${DATE}</code>, <code>-Cryo-CLO-${DATE}</code>
+          • Build Tools: <code>android-tools (clang-r547379)</code>
+
+          🕐 <b>Build Date:</b> $(date '+%Y-%m-%d %H:%M:%S UTC')
+          📦 <b>Package:</b> <code>${ZIP_NAME}</code> (${SIZE_H})
+          🔗 <a href="${RUN_URL}">Workflow run</a>
+          EOF
+          )
+
+          # Caption dokumen maksimal 1024 karakter (setelah tag dibuang)
+          VISIBLE=$(printf '%s' "$MSG" | sed -e 's/<[^>]*>//g' | wc -m)
+
+          if [ "$SIZE" -gt "$MAX_BYTES" ]; then
+            echo "ZIP $SIZE_H melebihi batas bot Telegram, kirim info + link saja"
+            send_msg "${MSG}
+
+          ⚠️ ZIP ${SIZE_H} melebihi batas upload bot (50 MB). Unduh dari Artifacts di link run."
+          elif [ "$VISIBLE" -le 950 ]; then
+            send_doc "$MSG"
+          else
+            send_doc "✅ <b>Kernel Build Successful</b>
+          📦 <code>${ZIP_NAME}</code> (${SIZE_H})"
+            send_msg "$MSG"
+          fi
+          exit 0
+
+  notify-failure:
+    name: "📱 Notify Telegram (failed)"
+    runs-on: ubuntu-latest
+    needs: [build-kernels, package-kernels]
+    if: failure()
+    permissions:
+      actions: read
+    steps:
+      - name: "📱 Send to Telegram"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
+          KSU_MANAGER: ${{ inputs.ksu_manager || 'BakaSU' }}
+          KSU_REF: ${{ inputs.ksu_ref }}
+          DEVICE_NAME: "Redmi Note 12/13 4G. Pad SE"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # Notifikasi tidak boleh menggagalkan workflow (runner memakai bash -e, jadi errexit dimatikan)
+          set -uo pipefail
+          set +e
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_USER_ID:-}" ]; then
+            echo "::notice::Secret Telegram belum diisi, notifikasi dilewati"; exit 0
+          fi
+
+          API="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}"
+          esc() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+          send_msg() {
+            local resp
+            resp=$(curl -sS "$API/sendMessage" --data-urlencode "chat_id=$TELEGRAM_USER_ID" --data-urlencode "parse_mode=HTML" \
+              --data-urlencode 'link_preview_options={"is_disabled":true}' --data-urlencode "text=$1") \
+              || { echo "::warning::curl ke Telegram gagal"; return 1; }
+            echo "$resp" | jq -e '.ok' >/dev/null 2>&1 \
+              || { echo "::warning::Telegram menolak: $(echo "$resp" | jq -r '.description // .' 2>/dev/null)"; return 1; }
+          }
+
+          # Job dan step yang gagal (lewat GitHub API)
+          FAILED=""
+          while IFS=$'\t' read -r job step; do
+            if [ -n "$job" ]; then
+              FAILED+="• <b>$(printf '%s' "$job" | esc)</b> → <code>$(printf '%s' "$step" | esc)</code>"$'\n'
+            fi
+          done < <(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?per_page=100" \
+                     --jq '.jobs[] | select(.conclusion=="failure") | [.name, (([.steps[]? | select(.conclusion=="failure")][0].name) // "-")] | @tsv' 2>/dev/null)
+          if [ -z "$FAILED" ]; then FAILED="• (detail tidak tersedia)"$'\n'; fi
+
+          MANAGER="$KSU_MANAGER"
+          if [ -n "$KSU_REF" ]; then MANAGER="$KSU_MANAGER @ $KSU_REF"; fi
+
+          MSG=$(cat <<EOF
+          ❌ <b>Kernel Build Failed</b>
+
+          <b>📦 Build Information:</b>
+          • Kernel: <code>Linux ${KERNEL_VERSION}</code>
+          • Android: <code>13-16</code>
+          • Branch: <code>android13-5.15-lts</code> (GKI), <code>kernel.lnx.5.15.r1-rel</code> (CLO)
+          • Device: <code>$(printf '%s' "$DEVICE_NAME" | esc)</code>
+
+          <b>⚙️ Configuration:</b>
+          • LTO: <code>full</code>
+          • Optimization: <code>-O2</code>
+          • Build Type: <code>both</code>
+          • 🔐 KSU Manager: <code>$(printf '%s' "$MANAGER" | esc)</code>
+          • SUSFS: <code>Enabled (GKI A13-5.15)</code>
+          • Build Tools: <code>android-tools (clang-r547379)</code>
+
+          💥 <b>Gagal di:</b>
+          ${FAILED}
+          🕐 <b>Failed at:</b> $(date '+%Y-%m-%d %H:%M:%S UTC')
+          🔍 Cek <a href="${RUN_URL}">workflow logs</a> (artifact <code>error-logs-*</code> berisi build_full.log)
+          EOF
+          )
+
+          send_msg "$MSG"
+          exit 0
           
