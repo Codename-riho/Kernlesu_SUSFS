@@ -240,6 +240,7 @@ jobs:
             -e CONFIG_CRYPTO_LZ4 \
             -e CONFIG_KERNEL_LZ4 \
             -e ZRAM_DEF_COMP_LZ4 \
+            --set-str CONFIG_ZRAM_DEF_COMP "lz4" \
             -e CONFIG_LRU_GEN \
             -e CONFIG_LRU_GEN_ENABLED \
             -d CONFIG_KERNEL_GZIP \
