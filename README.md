@@ -36,7 +36,7 @@ There are no official release files yet. The experimental builds generated from 
 
 ## ✨ Features (Target)
 
-- **ReSukiSU**: kernel-based root.
+- **Kernelsu and its variants**: kernel-based root.
 - **SUSFS**: hides traces of kernel modifications from specific apps (results depend on the device and app, no guarantees).
 - **Clang with Full LTO**, built automatically via GitHub Actions.
 - **Various options for the kernel**: Flashable zip will provide extensive options such as CLO.KSU/CLO.No.KSU.
@@ -49,25 +49,25 @@ There are no official release files yet. The experimental builds generated from 
 A public release will only happen if all these checkboxes are ticked:
 
 **Boot and Basics**
-- [ ] Boots successfully multiple times without bootlooping (minimum 20 reboots)
-- [ ] No kernel panics or random reboots during daily usage for at least 7 days
-- [ ] Deep sleep works normally, standby battery consumption is reasonable
+- [x] Boots successfully multiple times without bootlooping (minimum 20 reboots)
+- [x] No kernel panics or random reboots during daily usage for at least 7 days
+- [x] Deep sleep works normally, standby battery consumption is reasonable
 
 **Hardware**
-- [ ] Screen and touch
-- [ ] Wi-Fi, Bluetooth, and cellular data
-- [ ] Camera, audio, and sensors
-- [ ] Charging (including fast charge) and USB/OTG
-- [ ] GPS, NFC, and fingerprint (if the device has them)
+- [x] Screen and touch
+- [x] Wi-Fi, Bluetooth, and cellular data
+- [x] Camera, audio, and sensors
+- [x] Charging (including fast charge) and USB/OTG
+- [x] GPS, NFC, and fingerprint (if the device has them)
 
 **Root and SUSFS**
-- [ ] ReSukiSU Manager recognizes the kernel and root functions properly
-- [ ] Root modules and test apps run normally
-- [ ] SUSFS configuration does not cause crashes or lags
+- [x] Kernelsu Or Its variants Manager recognizes the kernel and root functions properly
+- [x] Root modules and test apps run normally
+- [x] SUSFS configuration does not cause crashes or lags
 
 **Release**
 - [ ] Build process is reproducible with the same results
-- [ ] Changelog and recovery instructions are fully documented
+- [x] Changelog and recovery instructions are fully documented
 
 ---
 
@@ -79,13 +79,13 @@ This configuration **is subject to change during testing**.
 |---|---|
 | Architecture | arm64 |
 | Partition | A/B, kernel written to active `boot` slot |
-| Kernel Version (Test Device)| 5.15.197, Android 13 |
+| Kernel Version (Test Device)| 5.15.197(CLO) 5.15.220(GKI), Android 13 |
 | Root | ReSukiSU (`main` branch) |
 | SUSFS | `gki-android13-5.15` branch |
 | Toolchain | Clang (`LLVM=1`), Full LTO, runner `ubuntu-24.04` |
-| Active SUSFS Options | `SUS_PATH`, `SUS_MOUNT`, `SUS_KSTAT`, `SPOOF_UNAME`, `OPEN_REDIRECT`, `SUS_MAP`, `HIDE_KSU_SUSFS_SYMBOLS` |
-| Disabled SUSFS Options| `ENABLE_LOG`, `SPOOF_CMDLINE_OR_BOOTCONFIG` (too risky in early stages) |
-| BTF | Disabled |
+| Active SUSFS Options | `SUS_PATH`, `SUS_MOUNT`, `SUS_KSTAT`, `SPOOF_UNAME`, `OPEN_REDIRECT`, `SUS_MAP`, `HIDE_KSU_SUSFS_SYMBOLS` `ENABLE_LOG` 
+`SPOOF_CMDLINE_OR_BOOTCONFIG` |
+| BTF | Enabled |
 | Build Output | `Image` wrapped in an AnyKernel3 zip |
 
 Test Device: _(Xiaomi, Redmi Note 12 4G, topaz)_
@@ -144,7 +144,7 @@ The other slot is untouched by the zip, acting as your primary safety net.
 - [x] Vendor modules
 - [ ] Long-term stability testing
 - [ ] Testing on more than one device
-- [ ] First public release
+- [x] First public release
 
 ---
 
@@ -165,8 +165,8 @@ The other slot is untouched by the zip, acting as your primary safety net.
 - [ReSukiSU](https://github.com/ReSukiSU/ReSukiSU) and KernelSU contributors
 - [SUSFS](https://gitlab.com/simonpunk/susfs4ksu) by simonpunk
 - [AnyKernel3](https://github.com/osm0sis/AnyKernel3) by osm0sis
-- OEM kernel sources
-- The custom Android community
+- OEM kernel sources And a great and wise Community 
+- The custom Android community 
 
 ## 📄 License
 
@@ -225,25 +225,25 @@ Belum ada file rilis resmi. Build percobaan yang muncul dari workflow di reposit
 Rilis publik hanya terjadi jika semua poin ini sudah tercentang:
 
 **Boot dan dasar**
-- [ ] Boot berhasil berulang kali tanpa bootloop (minimal 20 kali reboot)
-- [ ] Tidak ada kernel panic atau reboot mendadak selama pemakaian harian minimal 7 hari
-- [ ] Deep sleep normal, konsumsi baterai saat standby wajar
+- [x] Boot berhasil berulang kali tanpa bootloop (minimal 20 kali reboot)
+- [x] Tidak ada kernel panic atau reboot mendadak selama pemakaian harian minimal 7 hari
+- [x] Deep sleep normal, konsumsi baterai saat standby wajar
 
 **Perangkat keras**
-- [ ] Layar dan sentuhan
-- [ ] Wi-Fi, Bluetooth, dan data seluler
-- [ ] Kamera, audio, dan sensor
+- [x] Layar dan sentuhan
+- [x] Wi-Fi, Bluetooth, dan data seluler
+- [x] Kamera, audio, dan sensor
 - [ ] Pengisian daya (termasuk fast charge) dan USB/OTG
-- [ ] GPS, NFC, dan fingerprint (jika perangkat memilikinya)
+- [x] GPS, NFC, dan fingerprint (jika perangkat memilikinya)
 
 **Root dan SUSFS**
-- [ ] ReSukiSU Manager mengenali kernel dan root berfungsi
-- [ ] Modul root dan aplikasi uji berjalan normal
-- [ ] Konfigurasi SUSFS tidak menimbulkan crash atau lag
+- [x] Kernelsu atau Variantnya Manager mengenali kernel dan root berfungsi
+- [x] Modul root dan aplikasi uji berjalan normal
+- [x] Konfigurasi SUSFS tidak menimbulkan crash atau lag
 
 **Rilis**
 - [ ] Proses build bisa diulang dengan hasil yang sama
-- [ ] Catatan perubahan (changelog) dan cara pemulihan tertulis lengkap
+- [x] Catatan perubahan (changelog) dan cara pemulihan tertulis lengkap
 
 ---
 
@@ -259,9 +259,9 @@ Konfigurasi ini **masih berubah selama pengujian**.
 | Root | ReSukiSU (branch `main`) |
 | SUSFS | Branch `gki-android13-5.15` |
 | Toolchain | Clang (`LLVM=1`), Full LTO, runner `ubuntu-24.04` |
-| Opsi SUSFS aktif | `SUS_PATH`, `SUS_MOUNT`, `SUS_KSTAT`, `SPOOF_UNAME`, `OPEN_REDIRECT`, `SUS_MAP`, `HIDE_KSU_SUSFS_SYMBOLS` |
-| Opsi SUSFS dimatikan | `ENABLE_LOG`, `SPOOF_CMDLINE_OR_BOOTCONFIG` (lebih berisiko di tahap awal) |
-| BTF | Dimatikan |
+| Opsi SUSFS aktif | `SUS_PATH`, `SUS_MOUNT`, `SUS_KSTAT`, `SPOOF_UNAME`, `OPEN_REDIRECT`, `SUS_MAP`, `HIDE_KSU_SUSFS_SYMBOLS` `ENABLE_LOG`
+`SPOOF_CMDLINE_OR_BOOTCONFIG` |
+| BTF | Diaktifkan |
 | Hasil build | `Image` dibungkus zip AnyKernel3 |
 
 Perangkat uji: _(Xiaomi,Redmi Note 12 4G,topaz)_
@@ -320,7 +320,7 @@ Slot lainnya tidak disentuh oleh zip, jadi itu jaring pengaman utama.
 - [x] Modul vendor
 - [ ] Pengujian stabilitas jangka panjang
 - [ ] Pengujian di lebih dari satu perangkat
-- [ ] Rilis publik pertama
+- [x] Rilis publik pertama
 
 ---
 
