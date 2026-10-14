@@ -240,7 +240,6 @@ jobs:
             -e CONFIG_CRYPTO_LZ4 \
             -e CONFIG_KERNEL_LZ4 \
             -e ZRAM_DEF_COMP_LZ4 \
-            -e ZRAM_DEF_COMP_LZORLE \
             -e CONFIG_LRU_GEN \
             -e CONFIG_LRU_GEN_ENABLED \
             -d CONFIG_KERNEL_GZIP \
@@ -305,7 +304,7 @@ jobs:
             SukiSU-Ultra)           REPO="SukiSU-Ultra/SukiSU-Ultra";   SETUP_BRANCH=main;      DEFAULT_REF=builtin;   NEED_SUSFS_PATCH=0 ;;
             KernelSU-Next)          REPO="KernelSU-Next/KernelSU-Next"; SETUP_BRANCH=dev;       DEFAULT_REF="";        NEED_SUSFS_PATCH=1 ;;
             KernelSU-Next-pershoot) REPO="pershoot/KernelSU-Next";      SETUP_BRANCH=dev-susfs; DEFAULT_REF=dev-susfs; NEED_SUSFS_PATCH=0; EXTRA_PATCH_URL="$MULTI_MANAGER_PATCH" ;;
-            KernelSU-Official)      REPO="tiann/KernelSU";              SETUP_BRANCH=main;      DEFAULT_REF="";        NEED_SUSFS_PATCH=1 ;;
+            KernelSU-Official)      REPO="tiann/KernelSU";              SETUP_BRANCH=main;      DEFAULT_REF="";        NEED_SUSFS_PATCH=1; EXTRA_PATCH_URL="$MULTI_MANAGER_PATCH"
             Rissu-KSU)              REPO="rsuntk/KernelSU";             SETUP_BRANCH=main;      DEFAULT_REF="";        NEED_SUSFS_PATCH=1 ;;
             *) die "Unknown manager: $KSU_MANAGER" ;;
           esac
