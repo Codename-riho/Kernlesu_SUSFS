@@ -644,7 +644,7 @@ jobs:
       - name: "📱 Send to Telegram"
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           KSU_MANAGER: ${{ inputs.ksu_manager || 'BakaSU' }}
           KSU_REF: ${{ inputs.ksu_ref }}
           DEVICE_NAME: "Redmi Note 12/13 4G. Pad SE"
@@ -653,7 +653,7 @@ jobs:
           # Notifikasi tidak boleh menggagalkan workflow (runner memakai bash -e, jadi errexit dimatikan)
           set -uo pipefail
           set +e
-          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_USER_ID:-}" ]; then
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
             echo "::notice::Secret Telegram belum diisi, notifikasi dilewati"; exit 0
           fi
 
@@ -668,7 +668,7 @@ jobs:
               || { echo "::warning::Telegram menolak: $(echo "$resp" | jq -r '.description // .' 2>/dev/null)"; return 1; }
           }
           send_msg() {
-            tg sendMessage --data-urlencode "chat_id=$TELEGRAM_USER_ID" --data-urlencode "parse_mode=HTML" \
+            tg sendMessage --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" --data-urlencode "parse_mode=HTML" \
                --data-urlencode 'link_preview_options={"is_disabled":true}' --data-urlencode "text=$1"
           }
           send_doc() {
@@ -736,7 +736,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           KSU_MANAGER: ${{ inputs.ksu_manager || 'BakaSU' }}
           KSU_REF: ${{ inputs.ksu_ref }}
           DEVICE_NAME: "Redmi Note 12/13 4G. Pad SE"
@@ -745,7 +745,7 @@ jobs:
           # Notifikasi tidak boleh menggagalkan workflow (runner memakai bash -e, jadi errexit dimatikan)
           set -uo pipefail
           set +e
-          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_USER_ID:-}" ]; then
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
             echo "::notice::Secret Telegram belum diisi, notifikasi dilewati"; exit 0
           fi
 
@@ -753,7 +753,7 @@ jobs:
           esc() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
           send_msg() {
             local resp
-            resp=$(curl -sS "$API/sendMessage" --data-urlencode "chat_id=$TELEGRAM_USER_ID" --data-urlencode "parse_mode=HTML" \
+            resp=$(curl -sS "$API/sendMessage" --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" --data-urlencode "parse_mode=HTML" \
               --data-urlencode 'link_preview_options={"is_disabled":true}' --data-urlencode "text=$1") \
               || { echo "::warning::curl ke Telegram gagal"; return 1; }
             echo "$resp" | jq -e '.ok' >/dev/null 2>&1 \
