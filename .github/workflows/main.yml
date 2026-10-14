@@ -244,7 +244,11 @@ jobs:
             -e CONFIG_LRU_GEN_ENABLED \
             -d CONFIG_KERNEL_GZIP \
             -d CONFIG_KERNEL_LZO \
-            -d CONFIG_KERNEL_XZ
+            -d CONFIG_KERNEL_XZ \
+            -d CONFIG_KERNEL_ZSTD \
+            -d CONFIG_KERNEL_BZIP2 \
+            -d CONFIG_KERNEL_UNCOMPRESSED
+            
           
           # Remove duplicate lines safely
           sed -i '/ZRAM_DEF_COMP_LZO/d' "$CONFIG_FILE" || true
