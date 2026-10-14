@@ -80,11 +80,10 @@ This configuration **is subject to change during testing**.
 | Architecture | arm64 |
 | Partition | A/B, kernel written to active `boot` slot |
 | Kernel Version (Test Device)| 5.15.197(CLO) 5.15.220(GKI), Android 13 |
-| Root | ReSukiSU (`main` branch) |
+| Root | Kernelsu and its Variant |
 | SUSFS | `gki-android13-5.15` branch |
-| Toolchain | Clang (`LLVM=1`), Full LTO, runner `ubuntu-24.04` |
-| Active SUSFS Options | `SUS_PATH`, `SUS_MOUNT`, `SUS_KSTAT`, `SPOOF_UNAME`, `OPEN_REDIRECT`, `SUS_MAP`, `HIDE_KSU_SUSFS_SYMBOLS` `ENABLE_LOG` 
-`SPOOF_CMDLINE_OR_BOOTCONFIG` |
+| Toolchain | Clang (`LLVM=1`), Full LTO, runner `ubuntu-Latest` |
+| Active SUSFS Options | `SUS_PATH`, `SUS_MOUNT`, `SUS_KSTAT`, `SPOOF_UNAME`, `OPEN_REDIRECT`, `SUS_MAP`, `HIDE_KSU_SUSFS_SYMBOLS`,`ENABLE_LOG`,`SPOOF_CMDLINE_OR_BOOTCONFIG` |
 | BTF | Enabled |
 | Build Output | `Image` wrapped in an AnyKernel3 zip |
 
@@ -162,7 +161,7 @@ The other slot is untouched by the zip, acting as your primary safety net.
 
 ## 🙏 Credits
 
-- [ReSukiSU](https://github.com/ReSukiSU/ReSukiSU) and KernelSU contributors
+- [BakaSU](https://github.com/Baka-SU/BakaSU) and KernelSU contributors
 - [SUSFS](https://gitlab.com/simonpunk/susfs4ksu) by simonpunk
 - [AnyKernel3](https://github.com/osm0sis/AnyKernel3) by osm0sis
 - OEM kernel sources And a great and wise Community 
@@ -256,11 +255,10 @@ Konfigurasi ini **masih berubah selama pengujian**.
 | Arsitektur | arm64 |
 | Partisi | A/B, kernel ditulis ke `boot` slot aktif |
 | Versi kernel (perangkat uji) | 5.15.197, Android 13 |
-| Root | ReSukiSU (branch `main`) |
+| Root | Kernelsu dan Variantnya|
 | SUSFS | Branch `gki-android13-5.15` |
-| Toolchain | Clang (`LLVM=1`), Full LTO, runner `ubuntu-24.04` |
-| Opsi SUSFS aktif | `SUS_PATH`, `SUS_MOUNT`, `SUS_KSTAT`, `SPOOF_UNAME`, `OPEN_REDIRECT`, `SUS_MAP`, `HIDE_KSU_SUSFS_SYMBOLS` `ENABLE_LOG`
-`SPOOF_CMDLINE_OR_BOOTCONFIG` |
+| Toolchain | Clang (`LLVM=1`), Full LTO, runner `ubuntu-Latest` |
+| Opsi SUSFS aktif | `SUS_PATH`, `SUS_MOUNT`, `SUS_KSTAT`, `SPOOF_UNAME`, `OPEN_REDIRECT`, `SUS_MAP`, `HIDE_KSU_SUSFS_SYMBOLS`,`ENABLE_LOG`,`SPOOF_CMDLINE_OR_BOOTCONFIG` |
 | BTF | Diaktifkan |
 | Hasil build | `Image` dibungkus zip AnyKernel3 |
 
@@ -338,7 +336,7 @@ Slot lainnya tidak disentuh oleh zip, jadi itu jaring pengaman utama.
 
 ## 🙏 Kredit
 
-- [ReSukiSU](https://github.com/ReSukiSU/ReSukiSU) dan para kontributor KernelSU
+- [BakaSU](https://github.com/Baka-SU/BakaSU) dan para kontributor KernelSU
 - [SUSFS](https://gitlab.com/simonpunk/susfs4ksu) oleh simonpunk
 - [AnyKernel3](https://github.com/osm0sis/AnyKernel3) oleh osm0sis
 - Source kernel dari produsen perangkat dan komunitas yang hebat dan bijaksana 
