@@ -267,7 +267,7 @@ jobs:
               mkdir -p $(pwd)/${{ env.OUT_DIR }}
               args="$args O=$(pwd)/${{ env.OUT_DIR }}"
             fi
-            args="$args ARCH=arm64 LLVM=1 LTO=thin"
+            args="$args ARCH=arm64 LLVM=1 LTO=full"
             args="$args CROSS_COMPILE=aarch64-linux-gnu-"
             args="$args CLANG_TRIPLE=aarch64-linux-gnu-"
             args="$args AR=llvm-ar"
