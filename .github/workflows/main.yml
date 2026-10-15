@@ -260,7 +260,7 @@ jobs:
       - name: "😎 Set args for GKI kernels"
         if: github.event.inputs.toolchain_type == 'custom-tools'
         id: generate-args
-        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        working-directory: ./${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         run: |
             args="-j$(nproc --all)"
             if [ -n "${{ env.OUT_DIR }}" ]; then
@@ -276,7 +276,7 @@ jobs:
 
       - name: "📝 Append custom Makefile line"
         if: github.event.inputs.toolchain_type == 'custom-tools'
-        working-directory: .${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        working-directory: ./${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         run: |
          echo 'KBUILD_CFLAGS += -Wno-default-const-init-unsafe' >> Makefile
          echo 'KBUILD_CFLAGS += -Wno-uninitialized-const-pointer' >> Makefile
