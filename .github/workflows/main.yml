@@ -162,7 +162,7 @@ jobs:
           done
             
       - name: "📥 Initialize AOSP repo and toolchains"
-        if: github.event.inputs.buildToolchains == 'custom-tools'
+        if: github.event.inputs.toolchain_type == 'android-tools'
         working-directory: ${{ env.WORK_DIR }}
         run: |
           # Konfigurasi global git untuk transfer file besar
@@ -200,7 +200,7 @@ jobs:
           sed -i '/^POST_DEFCONFIG_CMDS="check_defconfig"/d' ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}/build.config.gki || true
 
       - name: "💫 Get Toolchains"
-        if: github.event.inputs.buildToolchains == 'custom-tools'
+        if: github.event.inputs.toolchain_type == 'custom-tools'
         env:
           GH_TOKEN: ${{ github.token }}
           CLANG_REPO: ${{ github.event.inputs.customClangRepo }}
@@ -613,7 +613,7 @@ jobs:
           grep -nE "LINUX_COMPILE_(BY|HOST)" "$F"
 
       - name: "🔨 Build kernel"
-        if: github.event.inputs.buildToolchains == 'android-tools'
+        if: github.event.inputs.toolchain_type == 'android-tools'
         working-directory: ${{ env.WORK_DIR }}
         env:
           KBUILD_BUILD_USER: dyatz
@@ -626,7 +626,7 @@ jobs:
           build/build.sh -j$(nproc --all) 2>&1 | tee build_full.log
 
       - name: "👍 Make defconfig"
-        if: github.event.inputs.buildToolchains == 'custom-tools'
+        if: github.event.inputs.toolchain_type == 'custom-tools'
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         env:
           args: ${{ steps.generate-args.outputs.args }}
@@ -635,7 +635,7 @@ jobs:
           make ${args} LLVM=1 ${{ env.DEFCONFIG_NAME }}
 
       - name: "🎶 Build kernel"
-        if: github.event.inputs.buildToolchains == 'custom-tools'
+        if: github.event.inputs.toolchain_type == 'custom-tools'
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         env:
           args: ${{ steps.generate-args.outputs.args }}
