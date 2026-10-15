@@ -121,7 +121,7 @@ jobs:
           mkdir -p ${{ env.KERNEL_LOC_DIR }}
           echo "BUILD_TIME=$(TZ=Asia/Jakarta date +'%Y-%m-%d')" >> $GITHUB_ENV
           sudo apt-get update -qq
-          sudo apt-get install -y repo rsync aria2
+          sudo apt-get install -y repo rsync aria2 bc bison build-essential ca-certificates clang cpio curl dwarves flex gcc-aarch64-linux-gnu git libdw-dev libelf-dev libssl-dev lld llvm llvm-dev pkg-config python3 rsync unzip xz-utils zip    
 
       - name: 🧹 Aggressive Cleanup
         run: |
