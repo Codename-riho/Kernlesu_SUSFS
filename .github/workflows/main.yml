@@ -704,16 +704,16 @@ jobs:
 
           <b>📦 Build Information:</b>
           • 🐧 Kernel: <code>Linux ${KERNEL_VERSION}</code>
-          • 🤖 Android: <code>13-16</code>
-          • 🪾 Branch: <code>android13-5.15-lts</code> (GKI), <code>kernel.lnx.5.15.r1-rel</code> (CLO)
-          • 📱 Device: <code>${DEVICE_NAME}</code>
+          • Android: <code>13-16</code>
+          • Branch: <code>android13-5.15-lts</code> (GKI), <code>kernel.lnx.5.15.r1-rel</code> (CLO)
+          • Device: <code>${DEVICE_NAME}</code>
 
           <b>⚙️ Configuration:</b>
-          • ☀️ LTO: <code>full</code>
-          • 🔥 Optimization: <code>-O2</code>
-          • 💿 Images: <code>${IMAGES}</code>
-          • 🔐 KSU Manager: <code>${MANAGER}</code>
-          • 🛡️ SUSFS: <code>Enabled (GKI A13-5.15)</code>
+          • LTO: <code>full</code>
+          • Optimization: <code>-O2</code>
+          • Images: <code>${IMAGES}</code>
+          • ⚔️ KSU Manager: <code>${MANAGER}</code>
+          • ඞ SUSFS: <code>Enabled (GKI A13-5.15)</code>
           • 🐧 Local Version: <code>Cryo-GKI-${DATE}</code>, <code>Cryo-CLO-${DATE}</code>
           • 🏗️ Build Tools: <code>clang-r547379</code>
 
