@@ -677,24 +677,39 @@ jobs:
       - name: "📦 Prepare kernel image"
         working-directory: ${{ env.WORK_DIR }}
         run: |
-          set -euo pipefail
-          mkdir -p out/dist
-          if [ "${{ github.event.inputs.toolchain_type }}" = "custom-tools" ]; then
-            src="${KERNEL_LOC_DIR}/${KERNEL_NAME}/out/arch/arm64/boot/Image"
-          else
-            src="out/dist/Image"        # hasil build/build.sh
-          fi
-          [ -f "$src" ] || { echo "::error::Image tidak ditemukan: $src"; exit 1; }
-          cp "$src" "out/dist/${OUTPUT_NAME}"
-          ls -lh "out/dist/${OUTPUT_NAME}"
+           set -euo pipefail
+           mkdir -p out/dist
+           if [ "${{ github.event.inputs.toolchain_type }}" = "custom-tools" ]; then
+             # If CLANG_PATH was set earlier in this job it will be available
+             if [ -n "${CLANG_PATH:-}" ]; then
+               echo "custom-tools ($(basename "$CLANG_PATH"))" > out/dist/build_tools.txt
+             else
+               # fallback: try system clang
+               clang --version 2>/dev/null | head -n1 > out/dist/build_tools.txt || echo "custom-tools (unknown clang)" > out/dist/build_tools.txt
+             fi
+           else
+             echo "android-tools (clang-r547379)" > out/dist/build_tools.txt
+           fi
+
+           if [ "${{ github.event.inputs.toolchain_type }}" = "custom-tools" ]; then
+             src="${KERNEL_LOC_DIR}/${KERNEL_NAME}/out/arch/arm64/boot/Image"
+           else
+             src="out/dist/Image"        # hasil build/build.sh
+           fi
+           [ -f "$src" ] || { echo "::error::Image tidak ditemukan: $src"; exit 1; }
+           cp "$src" "out/dist/${OUTPUT_NAME}"
+           ls -lh "out/dist/${OUTPUT_NAME}"
+           # show build_tools for debugging
+           echo "Build tools recorded:"
+           cat out/dist/build_tools.txt || true
 
       - name: "📤 Upload kernel artifact"
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ matrix.kernel.name }}-kernel
-          path: ${{ env.WORK_DIR }}/out/dist/${{ env.OUTPUT_NAME }}
-          retention-days: 1
-          if-no-files-found: error
+            name: ${{ matrix.kernel.name }}-kernel
+            path: ${{ env.WORK_DIR }}/out/dist/*
+            retention-days: 1
+            if-no-files-found: error
                
   package-kernels:
     name: "📦 Package Kernels"
@@ -786,60 +801,64 @@ jobs:
           archive: false
           retention-days: 30
           if-no-files-found: error
-
+          
       - name: "📱 Send to Telegram"
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          KSU_MANAGER: ${{ inputs.ksu_manager || 'BakaSU' }}
-          KSU_REF: ${{ inputs.ksu_ref }}
-          DEVICE_NAME: "Redmi Note 12 4G"
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+           KSU_MANAGER: ${{ inputs.ksu_manager || 'BakaSU' }}
+           KSU_REF: ${{ inputs.ksu_ref }}
+           DEVICE_NAME: "Redmi Note 12 4G"
+           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
-            echo "::notice::Secret Telegram belum diisi, notifikasi dilewati"; exit 0
-          fi
+           if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+             echo "::notice::Secret Telegram belum diisi, notifikasi dilewati"; exit 0
+           fi
 
-          esc() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
-          IMAGES=$(cd AnyKernel3 && ls Image.* 2>/dev/null | sed 's/^Image\.//' | paste -sd, - | sed 's/,/, /g')
-          MANAGER=$(printf '%s' "$KSU_MANAGER${KSU_REF:+ @ $KSU_REF}" | esc)
-          DATE="${ZIP_NAME#CryoKernel_}"; DATE="${DATE%.zip}"
+           esc() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+           IMAGES=$(cd AnyKernel3 && ls Image.* 2>/dev/null | sed 's/^Image\.//' | paste -sd, - | sed 's/,/, /g')
+           MANAGER=$(printf '%s' "$KSU_MANAGER${KSU_REF:+ @ $KSU_REF}" | esc)
+           DATE="${ZIP_NAME#CryoKernel_}"; DATE="${DATE%.zip}"
 
-          MSG=$(cat <<EOT
-          ✅ <b>Kernel Build Successful</b>
+           # try to read build_tools from downloaded artifacts
+           BUILD_TOOLS="android-tools (clang-r547379)"
+           BT=$(find ./artifacts -type f -name 'build_tools.txt' -print -quit || true)
+           if [ -n "$BT" ]; then
+             BUILD_TOOLS=$(head -n1 "$BT" | tr -d '\r\n' || true)
+           else
+             # fallback to inputs if file not present
+             if [ "${{ github.event.inputs.toolchain_type }}" = "custom-tools" ]; then
+               BUILD_TOOLS="custom-tools (unknown clang)"
+             else
+               BUILD_TOOLS="android-tools (clang-r547379)"
+             fi
+           fi
 
-          <b>📦 Build Information:</b>
-          • 🐧 Kernel: <code>Linux ${KERNEL_VERSION}</code>
-          • Android: <code>13-16</code>
-          • Branch: <code>android13-5.15-lts</code> (GKI), <code>kernel.lnx.5.15.r1-rel</code> (CLO)
-          • Device: <code>${DEVICE_NAME}</code>
+           MSG=$(cat <<EOT
+           ✅ <b>Kernel Build Successful</b>
 
-          <b>⚙️ Configuration:</b>
-          • LTO: <code>full</code>
-          • Optimization: <code>-O2</code>
-          • Images: <code>${IMAGES}</code>
-          • ⚔️ KSU Manager: <code>${MANAGER}</code>
-          • SUSFS: <code>Enabled (GKI A13-5.15)</code>
-          • Local Version: <code>Cryo-GKI-${DATE}</code>, <code>Cryo-CLO-${DATE}</code>
-          • Build Tools: <code>clang-r547379</code>
+           <b>📦 Build Information:</b>
+           • 🐧 Kernel: <code>Linux ${KERNEL_VERSION}</code>
+           • Android: <code>13-16</code>
+           • Branch: <code>android13-5.15-lts</code> (GKI), <code>kernel.lnx.5.15.r1-rel</code> (CLO)
+           • Device: <code>${DEVICE_NAME}</code>
 
-          🕐  <b>Build Date:</b> $(TZ=Asia/Jakarta date '+%Y-%m-%d %H:%M:%S WIB')
-          📦 <b>Package:</b> <code>${ZIP_NAME}</code>
+           <b>⚙️ Configuration:</b>
+           • LTO: <code>full</code>
+           • Optimization: <code>-O2</code>
+           • Images: <code>${IMAGES}</code>
+           • ⚔️ KSU Manager: <code>${MANAGER}</code>
+           • SUSFS: <code>Enabled (GKI A13-5.15)</code>
+           • Local Version: <code>Cryo-GKI-${DATE}</code>, <code>Cryo-CLO-${DATE}</code>
+           • Build Tools: <code>${BUILD_TOOLS}</code>
 
-          🔗 <a href="${RUN_URL}">Unduh dari Artifacts (halaman run)</a>
-          EOT
-          )
+           🕐  <b>Build Date:</b> $(TZ=Asia/Jakarta date '+%Y-%m-%d %H:%M:%S WIB')
+           📦 <b>Package:</b> <code>${ZIP_NAME}</code>
 
-          # Hanya kirim pesan + link. Kegagalan notifikasi tidak boleh menggagalkan workflow.
-          RESP=$(curl -sS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "parse_mode=HTML" \
-            --data-urlencode 'link_preview_options={"is_disabled":true}' \
-            --data-urlencode "text=${MSG}" || true)
-          echo "$RESP" | jq -e '.ok' >/dev/null 2>&1 \
-            && echo "✅ Telegram terkirim" \
-            || echo "::warning::Telegram menolak pesan: $(echo "$RESP" | jq -r '.description // empty' 2>/dev/null)"
-
+           🔗 <a href="${RUN_URL}">Unduh dari Artifacts (halaman run)</a>
+           EOT
+           )
+   
   notify-failure:
     name: "📱 Notify Telegram (failed)"
     runs-on: ubuntu-latest
@@ -904,7 +923,10 @@ jobs:
           • Build Type: <code>both</code>
           • KSU Manager: <code>$(printf '%s' "$MANAGER" | esc)</code>
           • SUSFS: <code>Enabled (GKI A13-5.15)</code>
-          • Build Tools: <code>android-tools (clang-r547379)</code>
+          • Build tools="android-tools (clang-r547379)"
+            if [ "${{ github.event.inputs.toolchain_type }}" = "custom-tools" ]; then
+            Build tools="custom-tools (clang - see build logs)"
+            fi
 
           💥 <b>Gagal di:</b>
           ${FAILED}
