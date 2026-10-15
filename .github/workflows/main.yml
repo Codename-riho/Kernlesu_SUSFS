@@ -28,15 +28,15 @@ on:
         description: "Opsional: branch/tag manager (kosong = bawaan tiap manager)"
         required: false
         default:        
-      buildToolchains:
-        description: "Metode compile"
+      toolchain_type:
+        description: "Pilih jenis Toolchain"
         type: choice
-        default: android-tools
         options:
-          - android-tools   # AOSP clang (build/build.sh)
-          - custom-tools    # clang dari GitHub (make langsung)
+          - android-tools
+          - custom-tools
+        default: default
       customClangRepo:
-        description: "Repo clang untuk custom-tools"
+        description: "Repo clang (HANYA DIPAKAI JIKA memilih 'custom-tools' di atas)"
         type: string
         default: greenforce-project/greenforce_clang
         
