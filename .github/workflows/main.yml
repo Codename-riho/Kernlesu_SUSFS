@@ -34,7 +34,7 @@ on:
         options:
           - android-tools
           - custom-tools
-        default: default
+        default: android-tools
       customClangRepo:
         description: "Repo clang (HANYA DIPAKAI JIKA memilih 'custom-tools' di atas)"
         type: string
@@ -627,7 +627,7 @@ jobs:
 
       - name: "👍 Make defconfig"
         if: github.event.inputs.toolchain_type == 'custom-tools'
-        working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         env:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
@@ -636,7 +636,7 @@ jobs:
 
       - name: "🎶 Build kernel"
         if: github.event.inputs.toolchain_type == 'custom-tools'
-        working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         env:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
