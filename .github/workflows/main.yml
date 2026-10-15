@@ -713,9 +713,9 @@ jobs:
           • Optimization: <code>-O2</code>
           • Images: <code>${IMAGES}</code>
           • ⚔️ KSU Manager: <code>${MANAGER}</code>
-          • ඞ SUSFS: <code>Enabled (GKI A13-5.15)</code>
-          • 🐧 Local Version: <code>Cryo-GKI-${DATE}</code>, <code>Cryo-CLO-${DATE}</code>
-          • 🏗️ Build Tools: <code>clang-r547379</code>
+          • SUSFS: <code>Enabled (GKI A13-5.15)</code>
+          • Local Version: <code>Cryo-GKI-${DATE}</code>, <code>Cryo-CLO-${DATE}</code>
+          • Build Tools: <code>clang-r547379</code>
 
           🕐  <b>Build Date:</b> $(TZ=Asia/Jakarta date '+%Y-%m-%d %H:%M:%S WIB')
           📦 <b>Package:</b> <code>${ZIP_NAME}</code>
@@ -787,18 +787,18 @@ jobs:
           ❌ <b>Kernel Build Failed</b>
 
           <b>📦 Build Information:</b>
-          • 🐧 Kernel: <code>Linux ${KERNEL_VERSION}</code>
-          • 🤖 Android: <code>13-16</code>
-          • 🪾 Branch: <code>android13-5.15-lts</code> (GKI), <code>kernel.lnx.5.15.r1-rel</code> (CLO)
-          • 📱 Device: <code>$(printf '%s' "$DEVICE_NAME" | esc)</code>
+          • Kernel: <code>Linux ${KERNEL_VERSION}</code>
+          • Android: <code>13-16</code>
+          • Branch: <code>android13-5.15-lts</code> (GKI), <code>kernel.lnx.5.15.r1-rel</code> (CLO)
+          • Device: <code>$(printf '%s' "$DEVICE_NAME" | esc)</code>
 
           <b>⚙️ Configuration:</b>
-          • ☀️ LTO: <code>full</code>
-          • 🔥 Optimization: <code>-O2</code>
-          • 📦 Build Type: <code>both</code>
-          • 🔐 KSU Manager: <code>$(printf '%s' "$MANAGER" | esc)</code>
-          • 🛡️ SUSFS: <code>Enabled (GKI A13-5.15)</code>
-          • 🏗️ Build Tools: <code>android-tools (clang-r547379)</code>
+          • LTO: <code>full</code>
+          • Optimization: <code>-O2</code>
+          • Build Type: <code>both</code>
+          • KSU Manager: <code>$(printf '%s' "$MANAGER" | esc)</code>
+          • SUSFS: <code>Enabled (GKI A13-5.15)</code>
+          • Build Tools: <code>android-tools (clang-r547379)</code>
 
           💥 <b>Gagal di:</b>
           ${FAILED}
