@@ -658,82 +658,52 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           KSU_MANAGER: ${{ inputs.ksu_manager || 'BakaSU' }}
           KSU_REF: ${{ inputs.ksu_ref }}
-          DEVICE_NAME: "Redmi Note 12/13 4G. Pad SE"
+          DEVICE_NAME: "Redmi Note 12 4G"
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          # Notifikasi tidak boleh menggagalkan workflow (runner memakai bash -e, jadi errexit dimatikan)
-          set -uo pipefail
-          set +e
-          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
             echo "::notice::Secret Telegram belum diisi, notifikasi dilewati"; exit 0
           fi
 
-          API="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}"
-          MAX_BYTES="${TG_MAX_BYTES:-49000000}"   # batas upload bot Telegram 50 MB
-
           esc() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
-          tg() { # method, argumen curl...
-            local resp
-            resp=$(curl -sS "$API/$1" "${@:2}") || { echo "::warning::curl ke Telegram gagal"; return 1; }
-            echo "$resp" | jq -e '.ok' >/dev/null 2>&1 \
-              || { echo "::warning::Telegram menolak: $(echo "$resp" | jq -r '.description // .' 2>/dev/null)"; return 1; }
-          }
-          send_msg() {
-            tg sendMessage --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" --data-urlencode "parse_mode=HTML" \
-               --data-urlencode 'link_preview_options={"is_disabled":true}' --data-urlencode "text=$1"
-          }
-          send_doc() {
-            tg sendDocument -F "chat_id=$TELEGRAM_USER_ID" -F "document=@$ZIP_NAME" \
-               --form-string "parse_mode=HTML" --form-string "caption=$1"
-          }
-
-          SIZE=$(stat -c%s "$ZIP_NAME")
-          SIZE_H=$(numfmt --to=iec --suffix=B "$SIZE")
-          DATE="${ZIP_NAME#CryoKernel_}"; DATE="${DATE%.zip}"
           IMAGES=$(cd AnyKernel3 && ls Image.* 2>/dev/null | sed 's/^Image\.//' | paste -sd, - | sed 's/,/, /g')
-          MANAGER="$KSU_MANAGER"
-          if [ -n "$KSU_REF" ]; then MANAGER="$KSU_MANAGER @ $KSU_REF"; fi
+          MANAGER=$(printf '%s' "$KSU_MANAGER${KSU_REF:+ @ $KSU_REF}" | esc)
+          DATE="${ZIP_NAME#CryoKernel_}"; DATE="${DATE%.zip}"
 
-          MSG=$(cat <<EOF
+          MSG=$(cat <<EOT
           ✅ <b>Kernel Build Successful</b>
 
           <b>📦 Build Information:</b>
-          • Kernel: <code>Linux ${KERNEL_VERSION}</code>
-          • Android: <code>13-16</code>
-          • Branch: <code>android13-5.15-lts</code> (GKI), <code>kernel.lnx.5.15.r1-rel</code> (CLO)
-          • Device: <code>$(printf '%s' "$DEVICE_NAME" | esc)</code>
+          • 🐧 Kernel: <code>Linux ${KERNEL_VERSION}</code>
+          • 🤖 Android: <code>13-16</code>
+          • 🪾 Branch: <code>android13-5.15-lts</code> (GKI), <code>kernel.lnx.5.15.r1-rel</code> (CLO)
+          • 📱 Device: <code>${DEVICE_NAME}</code>
 
           <b>⚙️ Configuration:</b>
-          • LTO: <code>full</code>
-          • Optimization: <code>-O2</code>
-          • Build Type: <code>both</code> (<code>${IMAGES}</code>)
-          • 🔐 KSU Manager: <code>$(printf '%s' "$MANAGER" | esc)</code>
-          • SUSFS: <code>Enabled (GKI A13-5.15)</code>
-          • Local Version: <code>-Cryo-GKI-${DATE}</code>, <code>-Cryo-CLO-${DATE}</code>
-          • Build Tools: <code>android-tools (clang-r547379)</code>
+          • ☀️ LTO: <code>full</code>
+          • 🔥 Optimization: <code>-O2</code>
+          • 💿 Images: <code>${IMAGES}</code>
+          • 🔐 KSU Manager: <code>${MANAGER}</code>
+          • 🛡️ SUSFS: <code>Enabled (GKI A13-5.15)</code>
+          • 🐧 Local Version: <code>Cryo-GKI-${DATE}</code>, <code>Cryo-CLO-${DATE}</code>
+          • 🏗️ Build Tools: <code>clang-r547379</code>
 
-          🕐 <b>Build Date:</b> $(date '+%Y-%m-%d %H:%M:%S UTC')
-          📦 <b>Package:</b> <code>${ZIP_NAME}</code> (${SIZE_H})
-          🔗 <a href="${RUN_URL}">Workflow run</a>
-          EOF
+          🕐  <b>Build Date:</b> $(TZ=Asia/Jakarta date '+%Y-%m-%d %H:%M:%S WIB')
+          📦 <b>Package:</b> <code>${ZIP_NAME}</code>
+
+          🔗 <a href="${RUN_URL}">Unduh dari Artifacts (halaman run)</a>
+          EOT
           )
 
-          # Caption dokumen maksimal 1024 karakter (setelah tag dibuang)
-          VISIBLE=$(printf '%s' "$MSG" | sed -e 's/<[^>]*>//g' | wc -m)
-
-          if [ "$SIZE" -gt "$MAX_BYTES" ]; then
-            echo "ZIP $SIZE_H melebihi batas bot Telegram, kirim info + link saja"
-            send_msg "${MSG}
-
-          ⚠️ ZIP ${SIZE_H} melebihi batas upload bot (50 MB). Unduh dari Artifacts di link run."
-          elif [ "$VISIBLE" -le 950 ]; then
-            send_doc "$MSG"
-          else
-            send_doc "✅ <b>Kernel Build Successful</b>
-          📦 <code>${ZIP_NAME}</code> (${SIZE_H})"
-            send_msg "$MSG"
-          fi
-          exit 0
+          # Hanya kirim pesan + link. Kegagalan notifikasi tidak boleh menggagalkan workflow.
+          RESP=$(curl -sS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "parse_mode=HTML" \
+            --data-urlencode 'link_preview_options={"is_disabled":true}' \
+            --data-urlencode "text=${MSG}" || true)
+          echo "$RESP" | jq -e '.ok' >/dev/null 2>&1 \
+            && echo "✅ Telegram terkirim" \
+            || echo "::warning::Telegram menolak pesan: $(echo "$RESP" | jq -r '.description // empty' 2>/dev/null)"
 
   notify-failure:
     name: "📱 Notify Telegram (failed)"
@@ -750,7 +720,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           KSU_MANAGER: ${{ inputs.ksu_manager || 'BakaSU' }}
           KSU_REF: ${{ inputs.ksu_ref }}
-          DEVICE_NAME: "Redmi Note 12/13 4G. Pad SE"
+          DEVICE_NAME: "Redmi Note 12 4G"
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           # Notifikasi tidak boleh menggagalkan workflow (runner memakai bash -e, jadi errexit dimatikan)
@@ -788,22 +758,22 @@ jobs:
           ❌ <b>Kernel Build Failed</b>
 
           <b>📦 Build Information:</b>
-          • Kernel: <code>Linux ${KERNEL_VERSION}</code>
-          • Android: <code>13-16</code>
-          • Branch: <code>android13-5.15-lts</code> (GKI), <code>kernel.lnx.5.15.r1-rel</code> (CLO)
-          • Device: <code>$(printf '%s' "$DEVICE_NAME" | esc)</code>
+          • 🐧 Kernel: <code>Linux ${KERNEL_VERSION}</code>
+          • 🤖 Android: <code>13-16</code>
+          • 🪾 Branch: <code>android13-5.15-lts</code> (GKI), <code>kernel.lnx.5.15.r1-rel</code> (CLO)
+          • 📱 Device: <code>$(printf '%s' "$DEVICE_NAME" | esc)</code>
 
           <b>⚙️ Configuration:</b>
-          • LTO: <code>full</code>
-          • Optimization: <code>-O2</code>
-          • Build Type: <code>both</code>
+          • ☀️ LTO: <code>full</code>
+          • 🔥 Optimization: <code>-O2</code>
+          • 📦 Build Type: <code>both</code>
           • 🔐 KSU Manager: <code>$(printf '%s' "$MANAGER" | esc)</code>
-          • SUSFS: <code>Enabled (GKI A13-5.15)</code>
-          • Build Tools: <code>android-tools (clang-r547379)</code>
+          • 🛡️ SUSFS: <code>Enabled (GKI A13-5.15)</code>
+          • 🏗️ Build Tools: <code>android-tools (clang-r547379)</code>
 
           💥 <b>Gagal di:</b>
           ${FAILED}
-          🕐 <b>Failed at:</b> $(date '+%Y-%m-%d %H:%M:%S UTC')
+          🕐  <b>Build Date:</b> $(TZ=Asia/Jakarta date '+%Y-%m-%d %H:%M:%S WIB')        
           🔍 Cek <a href="${RUN_URL}">workflow logs</a> (artifact <code>error-logs-*</code> berisi build_full.log)
           EOF
           )
