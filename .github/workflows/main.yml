@@ -256,18 +256,6 @@ jobs:
           # Remove duplicate lines safely
           sed -i '/ZRAM_DEF_COMP_LZO/d' "$CONFIG_FILE" || true
 
-      - name: "🔥 Aktifkan Kprofiles di .config"
-        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
-        run: |
-          set -euo pipefail
-          # .config ada di out/ (build.sh) atau di source (custom-tools); sesuaikan
-          CFG=$(ls ../out/${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}/.config out/.config .config 2>/dev/null | head -1 || true)
-          echo "Config: ${CFG:-tidak ada, hanya defconfig}"
-          if [ -n "$CFG" ]; then
-            scripts/config --file "$CFG" -e KPROFILES --set-val KP_DEFAULT_MODE 2 -e AUTO_KPROFILES_NONE
-            grep -E "KPROFILES|KP_DEFAULT" "$CFG"
-          fi
-
       - name: "💉 Inject Kprofiles Support"
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         env:
@@ -307,6 +295,18 @@ jobs:
           } >> "$CFG"
 
           echo "✅ Kprofiles aktif, default mode = ${KP_MODE}"
+
+      - name: "🔥 Aktifkan Kprofiles di .config"
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        run: |
+          set -euo pipefail
+          # .config ada di out/ (build.sh) atau di source (custom-tools); sesuaikan
+          CFG=$(ls ../out/${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}/.config out/.config .config 2>/dev/null | head -1 || true)
+          echo "Config: ${CFG:-tidak ada, hanya defconfig}"
+          if [ -n "$CFG" ]; then
+            scripts/config --file "$CFG" -e KPROFILES --set-val KP_DEFAULT_MODE 2 -e AUTO_KPROFILES_NONE
+            grep -E "KPROFILES|KP_DEFAULT" "$CFG"
+          fi
                    
       - name: "🏷️ Force short localversion"
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
