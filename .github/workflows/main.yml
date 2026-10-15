@@ -208,28 +208,46 @@ jobs:
           set -euo pipefail
 
           echo "📦 Mengunduh custom toolchain dari $CLANG_REPO..."
-          clang_url=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
-            "https://api.github.com/repos/$CLANG_REPO/releases/latest" \
-            | grep -m1 'browser_download_url.*tar.gz' | cut -d '"' -f 4)
-          [ -n "$clang_url" ] || { echo "::error::Release tar.gz tidak ditemukan di $CLANG_REPO"; exit 1; }
+          
+          # Ambil URL release asset (mendukung .tar.gz, .tar.xz, .zip, dsb)
+          RELEASE_JSON=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$CLANG_REPO/releases/latest")
+          clang_url=$(echo "$RELEASE_JSON" | grep -Eo 'https://[^\"]+\.(tar\.gz|tar\.xz|tar\.bz2|zip|tgz)' | head -n1 || true)
+
+          [ -n "$clang_url" ] || { echo "::error::Release asset (tar/zip) tidak ditemukan di $CLANG_REPO"; exit 1; }
           echo "✅ Clang URL: $clang_url"
 
-          # Gunakan nama folder ekstraksi yang berbeda dari nama biner 'clang'
           rm -rf clang_toolchain
           mkdir -p clang_toolchain
-          wget -q --show-progress -O clang.tar.gz "$clang_url"
-          tar -xf clang.tar.gz -C clang_toolchain
-          rm -f clang.tar.gz
+          
+          ARCHIVE_NAME=$(basename "$clang_url")
+          wget -q --show-progress -O "$ARCHIVE_NAME" "$clang_url"
 
-          # Cari file biner/executable 'clang' khusus di dalam folder bin/
-          CLANG_EXEC=$(find clang_toolchain -type f -name "clang" -path "*/bin/clang" | head -n1)
+          echo "📦 Ekstraksi $ARCHIVE_NAME..."
+          case "$ARCHIVE_NAME" in
+            *.tar.gz|*.tgz|*.tar.xz|*.tar.bz2)
+              tar -xf "$ARCHIVE_NAME" -C clang_toolchain
+              ;;
+            *.zip)
+              unzip -q "$ARCHIVE_NAME" -d clang_toolchain
+              ;;
+            *)
+              tar -xf "$ARCHIVE_NAME" -C clang_toolchain || unzip -q "$ARCHIVE_NAME" -d clang_toolchain
+              ;;
+          esac
+          rm -f "$ARCHIVE_NAME"
+
+          # Cari biner 'clang' (Mendukung file biasa -type f DAN symlink -type l)
+          CLANG_EXEC=$(find clang_toolchain \( -type f -o -type l \) -name "clang" -path "*/bin/clang" | head -n1)
           if [ -z "$CLANG_EXEC" ]; then
-            CLANG_EXEC=$(find clang_toolchain -type f -name "clang" | head -n1)
+            CLANG_EXEC=$(find clang_toolchain \( -type f -o -type l \) -name "clang" | head -n1)
           fi
 
-          [ -n "$CLANG_EXEC" ] || { echo "::error::Biner executable clang tidak ditemukan!"; exit 1; }
+          if [ -z "$CLANG_EXEC" ]; then
+            echo "::error::Biner clang tidak ditemukan! Isi folder ekstraksi:"
+            ls -la clang_toolchain
+            exit 1
+          fi
 
-          # Ambil direktori bin dari file executable tersebut
           CLANG_BIN_DIR=$(dirname "$CLANG_EXEC")
           CLANG_PATH="$(readlink -f "$CLANG_BIN_DIR")"
 
