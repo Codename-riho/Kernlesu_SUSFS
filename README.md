@@ -6,6 +6,8 @@
 
 # 🇬🇧 English
 
+<img width="2752" height="1536" alt="1000003040" src="https://github.com/user-attachments/assets/a980acfb-1395-4f93-b7b3-993971c30a39" />
+
 # ❄️ CryoKernel build for stability
 
 ![Status](https://img.shields.io/badge/status-testing%20%E2%80%93%20released-green)
@@ -180,6 +182,8 @@ Custom kernels can cause bootloops, data loss, or bricked hardware, and may void
 ---
 
 # 🇮🇩 Bahasa Indonesia
+
+<img width="2752" height="1536" alt="1000003040" src="https://github.com/user-attachments/assets/40d6409b-5d9b-4c9b-acaf-9a9cdf288aee" />
 
 # ❄️ CryoKernel build for stability
 
