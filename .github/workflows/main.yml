@@ -320,9 +320,8 @@ jobs:
             -d CONFIG_KERNEL_ZSTD \
             -d CONFIG_KERNEL_BZIP2 \
             -d CONFIG_KERNEL_UNCOMPRESSED \
-            -d CONFIG_KPROFILES
-            
-          
+            -e CONFIG_KPROFILES
+                     
           # Remove duplicate lines safely
           sed -i '/ZRAM_DEF_COMP_LZO/d' "$CONFIG_FILE" || true
 
@@ -366,18 +365,6 @@ jobs:
 
           echo "✅ Kprofiles aktif, default mode = ${KP_MODE}"
 
-      - name: "🔥 Aktifkan Kprofiles di .config"
-        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
-        run: |
-          set -euo pipefail
-          # .config ada di out/ (build.sh) atau di source (custom-tools); sesuaikan
-          CFG=$(ls ../out/${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}/.config out/.config .config 2>/dev/null | head -1 || true)
-          echo "Config: ${CFG:-tidak ada, hanya defconfig}"
-          if [ -n "$CFG" ]; then
-            scripts/config --file "$CFG" -e KPROFILES --set-val KP_DEFAULT_MODE 2 -e AUTO_KPROFILES_NONE
-            grep -E "KPROFILES|KP_DEFAULT" "$CFG"
-          fi
-                   
       - name: "🏷️ Force short localversion"
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         run: |
@@ -657,20 +644,23 @@ jobs:
       - name: "👍 Make defconfig"
         if: github.event.inputs.toolchain_type == 'custom-tools'
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
-        env:
-          args: ${{ steps.generate-args.outputs.args }}
         run: |
+          set -euo pipefail
           clang --version | head -n1
-          make ${args} LLVM=1 ${{ env.DEFCONFIG_NAME }}
+          make ARCH=arm64 LLVM=1 O=out "$DEFCONFIG_NAME"
+          # samakan dengan jalur build.sh (LTO=full)
+          scripts/config --file out/.config -d LTO_CLANG_THIN -e LTO_CLANG_FULL
+          make ARCH=arm64 LLVM=1 O=out olddefconfig
 
       - name: "🎶 Build kernel"
         if: github.event.inputs.toolchain_type == 'custom-tools'
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         env:
-          args: ${{ steps.generate-args.outputs.args }}
+          KBUILD_BUILD_USER: dyatz
+          KBUILD_BUILD_HOST: GitHub
         run: |
           set -o pipefail
-          make ${args} LLVM=1 -j"$(nproc --all)" 2>&1 | tee "${{ env.WORK_DIR }}/build_full.log"
+          make ARCH=arm64 LLVM=1 O=out -j"$(nproc --all)" Image 2>&1 | tee "$WORK_DIR/build_full.log"
                     
       - name: "🚨 Kumpulkan Log Error (Jika Gagal)"
         if: failure()
@@ -684,17 +674,19 @@ jobs:
           retention-days: 3
           if-no-files-found: ignore
           
-      - name: "📁 Copy Vanilla kernel image"
-        if: matrix.kernel.enable_ksu == false
-        working-directory: ${{ env.WORK_DIR }}/out/dist
+      - name: "📦 Prepare kernel image"
+        working-directory: ${{ env.WORK_DIR }}
         run: |
-          cp Image "${{ env.OUTPUT_NAME }}"
-
-      - name: "📁 Copy KSU kernel image"
-        if: matrix.kernel.enable_ksu == true
-        working-directory: ${{ env.WORK_DIR }}/out/dist
-        run: |
-          cp Image "${{ env.OUTPUT_NAME }}"
+          set -euo pipefail
+          mkdir -p out/dist
+          if [ "${{ github.event.inputs.toolchain_type }}" = "custom-tools" ]; then
+            src="${KERNEL_LOC_DIR}/${KERNEL_NAME}/out/arch/arm64/boot/Image"
+          else
+            src="out/dist/Image"        # hasil build/build.sh
+          fi
+          [ -f "$src" ] || { echo "::error::Image tidak ditemukan: $src"; exit 1; }
+          cp "$src" "out/dist/${OUTPUT_NAME}"
+          ls -lh "out/dist/${OUTPUT_NAME}"
 
       - name: "📤 Upload kernel artifact"
         uses: actions/upload-artifact@v7
@@ -702,6 +694,7 @@ jobs:
           name: ${{ matrix.kernel.name }}-kernel
           path: ${{ env.WORK_DIR }}/out/dist/${{ env.OUTPUT_NAME }}
           retention-days: 1
+          if-no-files-found: error
                
   package-kernels:
     name: "📦 Package Kernels"
