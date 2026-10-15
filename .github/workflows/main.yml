@@ -858,6 +858,17 @@ jobs:
            🔗 <a href="${RUN_URL}">Unduh dari Artifacts (halaman run)</a>
            EOT
            )
+           
+           # Perintah ini yang sebelumnya hilang untuk mengirim isi dari variabel MSG
+             RESP=$(curl -sS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+             --data-urlencode "parse_mode=HTML" \
+             --data-urlencode 'link_preview_options={"is_disabled":true}' \
+             --data-urlencode "text=${MSG}" || true)
+           
+           echo "$RESP" | jq -e '.ok' >/dev/null 2>&1 \
+             && echo "✅ Telegram terkirim" \
+             || echo "::warning::Telegram menolak pesan: $(echo "$RESP" | jq -r '.description // empty' 2>/dev/null)"
    
   notify-failure:
     name: "📱 Notify Telegram (failed)"
@@ -934,6 +945,17 @@ jobs:
           🔍 Cek <a href="${RUN_URL}">workflow logs</a> (artifact <code>error-logs-*</code> berisi build_full.log)
           EOF
           )
+          
+           # Perintah ini yang sebelumnya hilang untuk mengirim isi dari variabel MSG
+           RESP=$(curl -sS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+             --data-urlencode "parse_mode=HTML" \
+             --data-urlencode 'link_preview_options={"is_disabled":true}' \
+             --data-urlencode "text=${MSG}" || true)
+           
+           echo "$RESP" | jq -e '.ok' >/dev/null 2>&1 \
+             && echo "✅ Telegram terkirim" \
+             || echo "::warning::Telegram menolak pesan: $(echo "$RESP" | jq -r '.description // empty' 2>/dev/null)"
 
           send_msg "$MSG"
           exit 0
