@@ -324,7 +324,7 @@ jobs:
           # and an optional extra patch URL applied after setup.
           case "$KSU_MANAGER" in
             BakaSU)                 REPO="Baka-SU/BakaSU";              SETUP_BRANCH=main;      DEFAULT_REF=main;      NEED_SUSFS_PATCH=0 ;;
-            BakaSU-susfs            REPO="Baka-SU/BakaSU";              SETUP_BRANCH=sync-susfs DEFAULT_REF=sync-susfs;NEED_SUSFS_PATCH=0 ;;
+            BakaSU-susfs)           REPO="Baka-SU/BakaSU";              SETUP_BRANCH=sync-susfs DEFAULT_REF=sync-susfs;NEED_SUSFS_PATCH=0 ;;
             SukiSU-Ultra)           REPO="SukiSU-Ultra/SukiSU-Ultra";   SETUP_BRANCH=main;      DEFAULT_REF=builtin;   NEED_SUSFS_PATCH=0 ;;
             KernelSU-Next)          REPO="KernelSU-Next/KernelSU-Next"; SETUP_BRANCH=next;      DEFAULT_REF="";        NEED_SUSFS_PATCH=1 ;;
             KernelSU-Next-pershoot) REPO="pershoot/KernelSU-Next";      SETUP_BRANCH=dev-susfs; DEFAULT_REF=dev-susfs; NEED_SUSFS_PATCH=0; EXTRA_PATCH_URL="$MULTI_MANAGER_PATCH" ;;
