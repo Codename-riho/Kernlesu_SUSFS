@@ -162,6 +162,7 @@ jobs:
           done
             
       - name: "📥 Initialize AOSP repo and toolchains"
+        if: github.event.inputs.buildToolchains == 'custom-tools'
         working-directory: ${{ env.WORK_DIR }}
         run: |
           # Konfigurasi global git untuk transfer file besar
