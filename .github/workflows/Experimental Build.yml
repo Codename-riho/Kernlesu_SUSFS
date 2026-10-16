@@ -249,6 +249,16 @@ jobs:
           
           # Remove duplicate lines safely
           sed -i '/ZRAM_DEF_COMP_LZO/d' "$CONFIG_FILE" || true
+
+      - name: "🚄 Apply BBRv3"
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/bbr3.patch \
+            "https://raw.githubusercontent.com/Dyatz/Topaz_resukisu_SUSFS/refs/heads/main/patches/bbrv3-5.15.patch"
+          patch -p1 --dry-run < /tmp/bbr3.patch
+          patch -p1 --batch < /tmp/bbr3.patch
+          find . -name '*.rej' -o -name '*.orig' | grep . && exit 1 || true
           
       - name: "💉 Inject Kprofiles Support"
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
