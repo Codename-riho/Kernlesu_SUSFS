@@ -380,18 +380,22 @@ jobs:
             echo 'obj-$(CONFIG_KPROFILES) += kprofiles/' >> drivers/misc/Makefile
           fi
 
-          echo "🔥 Mengaktifkan Kprofiles di defconfig..."
+          echo "🔥 Mengaktifkan Kprofiles + Auto (${KP_AUTO}) di defconfig..."
           CFG="arch/arm64/configs/${{ env.DEFCONFIG_NAME }}"
           [ -f "$CFG" ] || { echo "::error::$CFG tidak ditemukan"; exit 1; }
-          sed -i '/^CONFIG_KPROFILES\b/d;/^# CONFIG_KPROFILES is not set/d;/^CONFIG_KP_DEFAULT_MODE/d' "$CFG"
+
+          # Bersihkan semua sisa konfigurasi Kprofiles (termasuk KP_DEFAULT_MODE)
+          sed -i -E '/^(# )?CONFIG_(KPROFILES|KP_DEFAULT_MODE|AUTO_KPROFILES)/d' "$CFG"
           {
             echo "CONFIG_KPROFILES=y"
-            echo "CONFIG_KP_DEFAULT_MODE=${KP_MODE}"
-            echo "CONFIG_AUTO_KPROFILES_NONE=y"
+            echo "CONFIG_AUTO_KPROFILES_${KP_AUTO}=y"
           } >> "$CFG"
 
-          echo "✅ Kprofiles aktif, default mode = ${KP_MODE}"
-
+          if [ "$KP_AUTO" = "FB" ] && ! grep -q '^CONFIG_FB=y' "$CFG"; then
+            echo "::warning::CONFIG_FB tidak ada di defconfig. Cek .config hasil build; kalau tidak aktif, auto_kp tetap N."
+          fi
+          echo "✅ Kprofiles aktif, auto = ${KP_AUTO}, default mode = bawaan Kconfig"
+          
       - name: "🏷️ Force short localversion"
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         run: |
