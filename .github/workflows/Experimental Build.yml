@@ -174,7 +174,7 @@ jobs:
           
           # Initialize AOSP repo
           repo init -u https://android.googlesource.com/kernel/manifest -b common-android13-5.15-lts --depth=1
-          repo sync --optimized-fetch --prune -j4
+          repo sync --optimized-fetch --prune -j2
           
           # Clean up existing repo and common directories
           rm -rf .repo
