@@ -355,7 +355,7 @@ jobs:
       - name: "💉 Inject Kprofiles Support"
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         env:
-          KP_MODE: "2"   # 0=Disabled 1=Battery 2=Balanced 3=Performance
+          KP_AUTO: "FB"   # FB | MSM_DRM | MI_DRM
         run: |
           set -euo pipefail
 
