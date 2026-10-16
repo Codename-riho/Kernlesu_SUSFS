@@ -4,6 +4,7 @@ env:
   OUT_DIR: "out"
   KERNEL_VERSION: "5.15"
   ANDROID_VERSION: "13"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 permissions:
   contents: write
@@ -26,7 +27,20 @@ on:
       ksu_ref:
         description: "Opsional: branch/tag manager (kosong = bawaan tiap manager)"
         required: false
-        default: 
+        default:
+        
+      toolchain_type:
+        description: "Pilih jenis Toolchain"
+        type: choice
+        options:
+          - android-tools
+          - custom-tools
+        default: android-tools
+        
+      customClangRepo:
+        description: "Repo clang (HANYA DIPAKAI JIKA memilih 'custom-tools' di atas)"
+        type: string
+        default: greenforce-project/greenforce_clang
         
 jobs:
   build-kernels:
@@ -53,7 +67,7 @@ jobs:
           - name: "CLO"
             dir: "common_clo"
             repo_name: "clo"
-            repo_url: "https://git.codelinaro.org/clo/la/kernel/msm-5.15.git"
+            repo_url: "https://github.com/Dyatz/msm-5.15-cryomirror.git"
             branch: "kernel.lnx.5.15.r1-rel"
             defconfig: "gki_defconfig"
             local_version: "Cryo-CLO"
@@ -81,7 +95,7 @@ jobs:
           - name: "CLO-NoKSU"
             dir: "common_clo_noksu"
             repo_name: "clo"
-            repo_url: "https://git.codelinaro.org/clo/la/kernel/msm-5.15.git"
+            repo_url: "https://github.com/Dyatz/msm-5.15-cryomirror.git"
             branch: "kernel.lnx.5.15.r1-rel"
             defconfig: "gki_defconfig"
             local_version: "Cryo-CLO"
@@ -109,8 +123,8 @@ jobs:
           mkdir -p ${{ env.KERNEL_LOC_DIR }}
           echo "BUILD_TIME=$(TZ=Asia/Jakarta date +'%Y-%m-%d')" >> $GITHUB_ENV
           sudo apt-get update -qq
-          sudo apt-get install -y repo rsync aria2
-
+          sudo apt-get install -y repo rsync aria2  bc bison build-essential ca-certificates clang cpio curl dwarves flex gcc-aarch64-linux-gnu git libdw-dev libelf-dev libssl-dev lld llvm llvm-dev pkg-config python3 rsync unzip xz-utils zip    
+          
       - name: 🧹 Aggressive Cleanup
         run: |
           # Remove heavy pre-installed tools
@@ -150,6 +164,7 @@ jobs:
           done
             
       - name: "📥 Initialize AOSP repo and toolchains"
+        if: github.event.inputs.toolchain_type == 'android-tools'
         working-directory: ${{ env.WORK_DIR }}
         run: |
           # Konfigurasi global git untuk transfer file besar
@@ -185,7 +200,92 @@ jobs:
           
           # Remove defconfig check (if exists)
           sed -i '/^POST_DEFCONFIG_CMDS="check_defconfig"/d' ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}/build.config.gki || true
-      
+
+      - name: "💫 Get Toolchains"
+        if: github.event.inputs.toolchain_type == 'custom-tools'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLANG_REPO: ${{ github.event.inputs.customClangRepo }}
+        run: |
+          set -euo pipefail
+
+          echo "📦 Mengunduh custom toolchain dari $CLANG_REPO..."
+          
+          # Ambil URL release asset (mendukung .tar.gz, .tar.xz, .zip, dsb)
+          RELEASE_JSON=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$CLANG_REPO/releases/latest")
+          clang_url=$(echo "$RELEASE_JSON" | grep -Eo 'https://[^\"]+\.(tar\.gz|tar\.xz|tar\.bz2|zip|tgz)' | head -n1 || true)
+
+          [ -n "$clang_url" ] || { echo "::error::Release asset (tar/zip) tidak ditemukan di $CLANG_REPO"; exit 1; }
+          echo "✅ Clang URL: $clang_url"
+
+          rm -rf clang_toolchain
+          mkdir -p clang_toolchain
+          
+          ARCHIVE_NAME=$(basename "$clang_url")
+          wget -q --show-progress -O "$ARCHIVE_NAME" "$clang_url"
+
+          echo "📦 Ekstraksi $ARCHIVE_NAME..."
+          case "$ARCHIVE_NAME" in
+            *.tar.gz|*.tgz|*.tar.xz|*.tar.bz2)
+              tar -xf "$ARCHIVE_NAME" -C clang_toolchain
+              ;;
+            *.zip)
+              unzip -q "$ARCHIVE_NAME" -d clang_toolchain
+              ;;
+            *)
+              tar -xf "$ARCHIVE_NAME" -C clang_toolchain || unzip -q "$ARCHIVE_NAME" -d clang_toolchain
+              ;;
+          esac
+          rm -f "$ARCHIVE_NAME"
+
+          # Cari biner 'clang' (Mendukung file biasa -type f DAN symlink -type l)
+          CLANG_EXEC=$(find clang_toolchain \( -type f -o -type l \) -name "clang" -path "*/bin/clang" | head -n1)
+          if [ -z "$CLANG_EXEC" ]; then
+            CLANG_EXEC=$(find clang_toolchain \( -type f -o -type l \) -name "clang" | head -n1)
+          fi
+
+          if [ -z "$CLANG_EXEC" ]; then
+            echo "::error::Biner clang tidak ditemukan! Isi folder ekstraksi:"
+            ls -la clang_toolchain
+            exit 1
+          fi
+
+          CLANG_BIN_DIR=$(dirname "$CLANG_EXEC")
+          CLANG_PATH="$(readlink -f "$CLANG_BIN_DIR")"
+
+          echo "CLANG_PATH=$CLANG_PATH" >> "$GITHUB_ENV"
+          echo "$CLANG_PATH" >> "$GITHUB_PATH"
+
+          echo "✅ Biner Clang ditemukan di: $CLANG_PATH"
+          "$CLANG_PATH/clang" --version | head -n1
+
+      - name: "😎 Set args for GKI kernels"
+        if: github.event.inputs.toolchain_type == 'custom-tools'
+        id: generate-args
+        working-directory: ./${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        run: |
+            args="-j$(nproc --all)"
+            if [ -n "${{ env.OUT_DIR }}" ]; then
+              mkdir -p $(pwd)/${{ env.OUT_DIR }}
+              args="$args O=$(pwd)/${{ env.OUT_DIR }}"
+            fi
+            args="$args ARCH=arm64 LLVM=1 LTO=full"
+            args="$args CROSS_COMPILE=aarch64-linux-gnu-"
+            args="$args CLANG_TRIPLE=aarch64-linux-gnu-"
+            args="$args AR=llvm-ar"
+            args="$args CC=clang"
+            echo "args=$args" >> $GITHUB_OUTPUT
+
+      - name: "📝 Append custom Makefile line"
+        if: github.event.inputs.toolchain_type == 'custom-tools'
+        working-directory: ./${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        run: |
+         echo 'KBUILD_CFLAGS += -Wno-default-const-init-unsafe' >> Makefile
+         echo 'KBUILD_CFLAGS += -Wno-uninitialized-const-pointer' >> Makefile
+         echo 'KBUILD_CFLAGS += -Wno-implicit-function-declaration' >> Makefile
+         echo 'KBUILD_CFLAGS += -Wno-sometimes-uninitialized' >> Makefile
+         echo "Custom Makefile line added successfully"
+             
       - name: "🧩 Configure kernel & patches"
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         run: |
@@ -562,6 +662,7 @@ jobs:
           grep -nE "LINUX_COMPILE_(BY|HOST)" "$F"
 
       - name: "🔨 Build kernel"
+        if: github.event.inputs.toolchain_type == 'android-tools'
         working-directory: ${{ env.WORK_DIR }}
         env:
           KBUILD_BUILD_USER: dyatz
@@ -572,7 +673,28 @@ jobs:
           LTO=full \
           BUILD_CONFIG=${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}/build.config.gki.aarch64 \
           build/build.sh -j$(nproc --all) 2>&1 | tee build_full.log
-                    
+
+      - name: "👍 Make defconfig"
+        if: github.event.inputs.toolchain_type == 'custom-tools'
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        run: |
+          set -euo pipefail
+          clang --version | head -n1
+          make ARCH=arm64 LLVM=1 O=out "$DEFCONFIG_NAME"
+          # samakan dengan jalur build.sh (LTO=full)
+          scripts/config --file out/.config -d LTO_CLANG_THIN -e LTO_CLANG_FULL
+          make ARCH=arm64 LLVM=1 O=out olddefconfig
+
+      - name: "🎶 Build kernel"
+        if: github.event.inputs.toolchain_type == 'custom-tools'
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        env:
+          KBUILD_BUILD_USER: dyatz
+          KBUILD_BUILD_HOST: GitHub
+        run: |
+          set -o pipefail
+          make ARCH=arm64 LLVM=1 O=out -j"$(nproc --all)" Image 2>&1 | tee "$WORK_DIR/build_full.log"
+                                  
       - name: "🚨 Kumpulkan Log Error (Jika Gagal)"
         if: failure()
         uses: actions/upload-artifact@v4
@@ -598,7 +720,7 @@ jobs:
           cp Image "${{ env.OUTPUT_NAME }}"
 
       - name: "📤 Upload kernel artifact"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.kernel.name }}-kernel
           path: ${{ env.WORK_DIR }}/out/dist/${{ env.OUTPUT_NAME }}
@@ -612,7 +734,7 @@ jobs:
       contents: write
     steps:
       - name: "📥 Download kernel artifacts"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: ./artifacts/
 
