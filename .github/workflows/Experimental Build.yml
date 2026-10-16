@@ -707,18 +707,35 @@ jobs:
           retention-days: 3
           if-no-files-found: ignore
           
-      - name: "📁 Copy Vanilla kernel image"
-        if: matrix.kernel.enable_ksu == false
-        working-directory: ${{ env.WORK_DIR }}/out/dist
+      - name: "📦 Prepare kernel image"
+        working-directory: ${{ env.WORK_DIR }}
         run: |
-          cp Image "${{ env.OUTPUT_NAME }}"
+           set -euo pipefail
+           mkdir -p out/dist
+           if [ "${{ github.event.inputs.toolchain_type }}" = "custom-tools" ]; then
+             # If CLANG_PATH was set earlier in this job it will be available
+             if [ -n "${CLANG_PATH:-}" ]; then
+               echo "custom-tools ($(basename "$CLANG_PATH"))" > out/dist/build_tools.txt
+             else
+               # fallback: try system clang
+               clang --version 2>/dev/null | head -n1 > out/dist/build_tools.txt || echo "custom-tools (unknown clang)" > out/dist/build_tools.txt
+             fi
+           else
+             echo "android-tools (clang-r547379)" > out/dist/build_tools.txt
+           fi
 
-      - name: "📁 Copy KSU kernel image"
-        if: matrix.kernel.enable_ksu == true
-        working-directory: ${{ env.WORK_DIR }}/out/dist
-        run: |
-          cp Image "${{ env.OUTPUT_NAME }}"
-
+           if [ "${{ github.event.inputs.toolchain_type }}" = "custom-tools" ]; then
+             src="${KERNEL_LOC_DIR}/${KERNEL_NAME}/out/arch/arm64/boot/Image"
+           else
+             src="out/dist/Image"        # hasil build/build.sh
+           fi
+           [ -f "$src" ] || { echo "::error::Image tidak ditemukan: $src"; exit 1; }
+           cp "$src" "out/dist/${OUTPUT_NAME}"
+           ls -lh "out/dist/${OUTPUT_NAME}"
+           # show build_tools for debugging
+           echo "Build tools recorded:"
+           cat out/dist/build_tools.txt || true
+           
       - name: "📤 Upload kernel artifact"
         uses: actions/upload-artifact@v7
         with:
