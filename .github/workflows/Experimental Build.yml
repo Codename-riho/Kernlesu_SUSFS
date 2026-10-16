@@ -381,30 +381,41 @@ jobs:
           KP_MODE: "3"
         run: |
           set -euo pipefail
+          
+          echo "📦 Mengunduh Kprofiles..."
+          rm -rf drivers/misc/kprofiles
+          for i in 1 2 3; do
+            git clone --depth=1 https://github.com/dakkshesh07/Kprofiles.git drivers/misc/kprofiles && break
+            echo "⚠️ Clone gagal ($i/3)"; rm -rf drivers/misc/kprofiles; sleep $((i*10))
+            [ "$i" = 3 ] && { echo "::error::Gagal clone Kprofiles"; exit 1; }
+          done
+          rm -rf drivers/misc/kprofiles/.git
 
-          # Cari .config (prioritas: kernel/out/.config -> WORK_DIR/out/.config -> .config di source)
-          CFG=$(ls out/.config ../../out/.config .config 2>/dev/null | head -1 || true)
-          echo "Config: ${CFG:-tidak ada, hanya defconfig}"
-          if [ -z "$CFG" ]; then
-            echo "ℹ️ .config tidak ditemukan — melewatkan pengaturan Kprofiles"
-            exit 0
+          echo "🔧 Menyambungkan ke Kconfig..."
+          if ! grep -q 'drivers/misc/kprofiles/Kconfig' drivers/misc/Kconfig; then
+            sed -i '/^menu "Misc devices"/a source "drivers/misc/kprofiles/Kconfig"' drivers/misc/Kconfig
+          fi
+          grep -q 'drivers/misc/kprofiles/Kconfig' drivers/misc/Kconfig \
+            || { echo "::error::Kconfig gagal disambungkan"; exit 1; }
+
+          echo "🔧 Menyambungkan ke Makefile..."
+          if ! grep -qF 'CONFIG_KPROFILES' drivers/misc/Makefile; then
+            echo 'obj-$(CONFIG_KPROFILES) += kprofiles/' >> drivers/misc/Makefile
           fi
 
-          # Pastikan tools ada
-          if [ ! -x scripts/config ] && [ ! -f scripts/config ]; then
-            echo "::error::scripts/config tidak ditemukan di source. Pastikan Anda berada di direktori kernel yang benar."
-            exit 1
-          fi
+          echo "🔥 Mengaktifkan Kprofiles di defconfig..."
+          CFG="arch/arm64/configs/${{ env.DEFCONFIG_NAME }}"
+          [ -f "$CFG" ] || { echo "::error::$CFG tidak ditemukan"; exit 1; }
+          
+          sed -i '/^CONFIG_KPROFILES\b/d;/^# CONFIG_KPROFILES is not set/d;/^CONFIG_KP_DEFAULT_MODE/d' "$CFG"
+          {
+            echo "CONFIG_KPROFILES=y"
+            echo "CONFIG_KP_DEFAULT_MODE=${KP_MODE}"
+            echo "CONFIG_AUTO_KPROFILES_NONE=y"
+          } >> "$CFG"
 
-          # Matikan varian AUTO spesifik agar tidak bentrok
-          scripts/config --file "$CFG" -d CONFIG_AUTO_KPROFILES_FB -d CONFIG_AUTO_KPROFILES_MSM_DRM -d CONFIG_AUTO_KPROFILES_MI_DRM || true
-
-          # Aktifkan KPROFILES, set default mode, dan aktifkan AUTO_KPROFILES_NONE
-          scripts/config --file "$CFG" -e CONFIG_KPROFILES --set-val CONFIG_KP_DEFAULT_MODE "${KP_MODE}" -e CONFIG_AUTO_KPROFILES_NONE
-
-          echo "📝 Hasil konfigurasi (baris terkait Kprofiles):"
-          grep -E "KPROFILES|KP_DEFAULT|AUTO_KPROFILES" "$CFG" || true
-                 
+          echo "✅ Kprofiles aktif, default mode = ${KP_MODE}"
+                     
       - name: "🏷️ Force short localversion"
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         run: |
