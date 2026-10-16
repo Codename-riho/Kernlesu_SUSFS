@@ -54,7 +54,7 @@ jobs:
             repo_url: "https://android.googlesource.com/kernel/common"
             branch: "android13-5.15-lts"
             defconfig: "gki_defconfig"
-            local_version: "Cryo-GKI"
+            local_version: "-Cryo-GKI"
             output_name: "Image.gki.ksu"
             enable_ksu: true
             extra_patches:
@@ -68,7 +68,7 @@ jobs:
             repo_url: "https://github.com/Dyatz/msm-5.15-cryomirror.git"
             branch: "kernel.lnx.5.15.r1-rel"
             defconfig: "gki_defconfig"
-            local_version: "Cryo-CLO"
+            local_version: "-Cryo-CLO"
             output_name: "Image.clo.ksu"
             enable_ksu: true
             extra_patches:
@@ -82,7 +82,7 @@ jobs:
             repo_url: "https://android.googlesource.com/kernel/common"
             branch: "android13-5.15-lts"
             defconfig: "gki_defconfig"
-            local_version: "Cryo-GKI"
+            local_version: "-Cryo-GKI"
             output_name: "Image.gki.noksu"
             enable_ksu: false
             extra_patches:
@@ -96,7 +96,7 @@ jobs:
             repo_url: "https://github.com/Dyatz/msm-5.15-cryomirror.git"
             branch: "kernel.lnx.5.15.r1-rel"
             defconfig: "gki_defconfig"
-            local_version: "Cryo-CLO"
+            local_version: "-Cryo-CLO"
             output_name: "Image.clo.noksu"
             enable_ksu: false
             extra_patches:
