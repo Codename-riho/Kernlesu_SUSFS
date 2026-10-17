@@ -81,7 +81,7 @@ This configuration **is subject to change during testing**.
 |---|---|
 | Architecture | arm64 |
 | Partition | A/B, kernel written to active `boot` slot |
-| Kernel Version (Test Device)| 5.15.197(CLO) 5.15.220(GKI), Android 13 |
+| Kernel Version (Test Device)| 5.15.206(CLO) 5.15.220(GKI), Android 13 |
 | Root | Kernelsu and its Variant |
 | SUSFS | `gki-android13-5.15` branch |
 | Toolchain | Clang (`LLVM=1`), Full LTO, runner `ubuntu-Latest` |
@@ -260,7 +260,7 @@ Konfigurasi ini **masih berubah selama pengujian**.
 |---|---|
 | Arsitektur | arm64 |
 | Partisi | A/B, kernel ditulis ke `boot` slot aktif |
-| Versi kernel (perangkat uji) | 5.15.197, Android 13 |
+| Versi kernel (perangkat uji) | 5.15.206(clo),5.15.220(gki), Android 13 |
 | Root | Kernelsu dan Variantnya|
 | SUSFS | Branch `gki-android13-5.15` |
 | Toolchain | Clang (`LLVM=1`), Full LTO, runner `ubuntu-Latest` |
