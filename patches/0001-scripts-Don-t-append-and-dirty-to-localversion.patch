@@ -6,7 +6,7 @@ Subject: [PATCH] scripts: Don't append "+" and "-dirty" to localversion
 Signed-off-by: Sultan Alsawaf <sultan@kerneltoast.com>
 Signed-off-by: Divyanshu-Modi <divyan.m05@gmail.com>
 Signed-off-by: Tashfin Shakeer Rhythm <tashfinshakeerrhythm@gmail.com>
-Signed-off-by: unknown <dyatz@gmail.com>
+Signed-off-by: unknown <belowzeroiq@gmail.com>
 ---
  scripts/setlocalversion | 4 +---
  1 file changed, 1 insertion(+), 3 deletions(-)
