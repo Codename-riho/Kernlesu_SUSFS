@@ -355,7 +355,6 @@ jobs:
           sed -i '/ZRAM_DEF_COMP_LZO/d' "$CONFIG_FILE" || true
 
       - name: "🚄 Apply BBRv3 + PLB"
-        if: matrix.kernel.enable_ksu == true
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         env:
           BBR3_SHA: 7bc9793d909f52f4a6cd45dd1381b2f200c18a7c
@@ -759,7 +758,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
             name: ${{ matrix.kernel.name }}-kernel
-            path: ${{ env.WORK_DIR }}/out/dist/*
+            path: |
+              ${{ env.WORK_DIR }}/out/dist/${{ env.OUTPUT_NAME }}
+              ${{ env.WORK_DIR }}/out/dist/build_tools.txt
             retention-days: 1
             if-no-files-found: error
                
@@ -913,7 +914,7 @@ jobs:
            
            # Perintah ini yang sebelumnya hilang untuk mengirim isi dari variabel MSG
              RESP=$(curl -sS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+             --data-urlencode "chat_id=${TELEGRAM_USER_ID}" \
              --data-urlencode "parse_mode=HTML" \
              --data-urlencode 'link_preview_options={"is_disabled":true}' \
              --data-urlencode "text=${MSG}" || true)
@@ -997,7 +998,7 @@ jobs:
           
            # Perintah ini yang sebelumnya hilang untuk mengirim isi dari variabel MSG
            RESP=$(curl -sS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+             --data-urlencode "chat_id=${TELEGRAM_USER_ID}" \
              --data-urlencode "parse_mode=HTML" \
              --data-urlencode 'link_preview_options={"is_disabled":true}' \
              --data-urlencode "text=${MSG}" || true)
