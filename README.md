@@ -10,7 +10,7 @@
 
 # ❄️ CryoKernel build for stability
 
-![Status](https://img.shields.io/badge/status-testing%20%E2%80%93%20released-green)
+![Status](https://img.shields.io/badge/status-stable%20%E2%80%93%20released-green)
 ![Arch](https://img.shields.io/badge/arch-arm64-blue)
 ![Slot](https://img.shields.io/badge/slot-A%2FB-blue)
 ![Kernel](https://img.shields.io/badge/kernel-5.15-lightgrey)
@@ -187,7 +187,7 @@ Custom kernels can cause bootloops, data loss, or bricked hardware, and may void
 
 # ❄️ CryoKernel build for stability
 
-![Status](https://img.shields.io/badge/status-testing%20%E2%80%93%20%20dirilis-green)
+![Status](https://img.shields.io/badge/status-stable%20%E2%80%93%20%20dirilis-green)
 ![Arch](https://img.shields.io/badge/arch-arm64-blue)
 ![Slot](https://img.shields.io/badge/slot-A%2FB-blue)
 ![Kernel](https://img.shields.io/badge/kernel-5.15-lightgrey)
