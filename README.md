@@ -166,8 +166,10 @@ The other slot is untouched by the zip, acting as your primary safety net.
 - [BakaSU](https://github.com/Baka-SU/BakaSU) and KernelSU contributors
 - [SUSFS](https://gitlab.com/simonpunk/susfs4ksu) by simonpunk
 - [AnyKernel3](https://github.com/osm0sis/AnyKernel3) by osm0sis
+- [topnotchfreaks](https://github.com/topnotchfreaks),[yougotme101](https://github.com/yougotme101)
+and friends who contribute to the original repo, don't be angry if they are not mentioned pm me in telegram group @JackeOwie I will add you to the credits
 - OEM kernel sources And a great and wise Community 
-- The custom Android community 
+- The custom Android community For the endless wisdom, shared knowledge, and unwavering support
 
 ## 📄 License
 
@@ -343,8 +345,10 @@ Slot lainnya tidak disentuh oleh zip, jadi itu jaring pengaman utama.
 - [BakaSU](https://github.com/Baka-SU/BakaSU) dan para kontributor KernelSU
 - [SUSFS](https://gitlab.com/simonpunk/susfs4ksu) oleh simonpunk
 - [AnyKernel3](https://github.com/osm0sis/AnyKernel3) oleh osm0sis
+- [topnotchfreaks](https://github.com/topnotchfreaks),[yougotme101](https://github.com/yougotme101)
+Dan bagi teman-teman yang berkontribusi pada repositori asli, jangan marah jika nama kalian tidak disebutkan; silakan hubungi saya di grup Telegram @JackeOwie agar saya bisa menambahkan kalian ke dalam daftar kredit.
 - Source kernel dari produsen perangkat dan komunitas yang hebat dan bijaksana 
-- Komunitas Android kustom
+- Komunitas Android kustom Atas kebijaksanaan yang tak berkesudahan, pengetahuan yang dibagikan, serta dukungan yang tak tergoyahkan
 
 ## 📄 Lisensi
 
