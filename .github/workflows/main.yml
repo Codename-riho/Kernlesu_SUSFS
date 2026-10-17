@@ -29,7 +29,7 @@ on:
         required: false
         default:        
       toolchain_type:
-        description: "Pilih jenis Toolchain"
+        description: "Pilih jenis Toolchain (android tools=clang 20, costom-tools=clang 24/Cirrus clang)"
         type: choice
         options:
           - android-tools
@@ -58,24 +58,24 @@ jobs:
             output_name: "Image.gki.ksu"
             enable_ksu: true
             extra_patches:
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-gki-fixup.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-gki-fixup.patch"
               - "https://raw.githubusercontent.com/Dyatz/Topaz_resukisu_SUSFS/refs/heads/main/patches/0001-scripts-sign-builds.patch"
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-do-not-ship-full-auto_localversion.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-scripts-do-not-ship-full-auto_localversion.patch"
           - name: "CLO"
             dir: "common_clo"
             repo_name: "clo"
             repo_url: "https://github.com/Dyatz/msm-5.15-cryomirror.git"
-            branch: "kernel.lnx.5.15.r1-rel"
+            branch: "kernel.lnx.5.15.r16-rel"
             defconfig: "gki_defconfig"
             local_version: "-Cryo-CLO"
             output_name: "Image.clo.ksu"
             enable_ksu: true
             extra_patches:
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-gki-fixup.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-gki-fixup.patch"
               - "https://raw.githubusercontent.com/Dyatz/Topaz_resukisu_SUSFS/refs/heads/main/patches/0001-scripts-sign-builds.patch"
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-do-not-ship-full-auto_localversion.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-scripts-do-not-ship-full-auto_localversion.patch"
           - name: "GKI-NoKSU"
             dir: "common_gki_noksu"
             repo_name: "common"
@@ -86,24 +86,24 @@ jobs:
             output_name: "Image.gki.noksu"
             enable_ksu: false
             extra_patches:
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-gki-fixup.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-gki-fixup.patch"
               - "https://raw.githubusercontent.com/Dyatz/Topaz_resukisu_SUSFS/refs/heads/main/patches/0001-scripts-sign-builds.patch"
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-do-not-ship-full-auto_localversion.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-scripts-do-not-ship-full-auto_localversion.patch"
           - name: "CLO-NoKSU"
             dir: "common_clo_noksu"
             repo_name: "clo"
             repo_url: "https://github.com/Dyatz/msm-5.15-cryomirror.git"
-            branch: "kernel.lnx.5.15.r1-rel"
+            branch: "kernel.lnx.5.15.r16-rel"
             defconfig: "gki_defconfig"
             local_version: "-Cryo-CLO"
             output_name: "Image.clo.noksu"
             enable_ksu: false
             extra_patches:
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-gki-fixup.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-gki-fixup.patch"
               - "https://raw.githubusercontent.com/Dyatz/Topaz_resukisu_SUSFS/refs/heads/main/patches/0001-scripts-sign-builds.patch"
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-do-not-ship-full-auto_localversion.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-scripts-do-not-ship-full-auto_localversion.patch"
 
     env:
       KERNEL_LOC_DIR: ${{ matrix.kernel.dir }}
@@ -161,7 +161,7 @@ jobs:
             }
           done
             
-      - name: "📥 Initialize AOSP repo and toolchains"
+      - name: "📥 Initialize AOSP repo and toolchains (clang 20)"
         if: github.event.inputs.toolchain_type == 'android-tools'
         working-directory: ${{ env.WORK_DIR }}
         run: |
@@ -172,7 +172,7 @@ jobs:
           
           # Initialize AOSP repo
           repo init -u https://android.googlesource.com/kernel/manifest -b common-android13-5.15-lts --depth=1
-          repo sync --optimized-fetch --prune -j4
+          repo sync --optimized-fetch --prune -j2
           
           # Clean up existing repo and common directories
           rm -rf .repo
@@ -199,7 +199,7 @@ jobs:
           # Remove defconfig check (if exists)
           sed -i '/^POST_DEFCONFIG_CMDS="check_defconfig"/d' ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}/build.config.gki || true
 
-      - name: "💫 Get Toolchains"
+      - name: "💫 Get Toolchains (clang 24 by default)"
         if: github.event.inputs.toolchain_type == 'custom-tools'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -379,7 +379,7 @@ jobs:
       - name: "💉 Inject Kprofiles Support"
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         env:
-          KP_MODE: "3"
+          KP_MODE: "2"
         run: |
           set -euo pipefail
           
@@ -986,10 +986,7 @@ jobs:
           • Build Type: <code>both</code>
           • KSU Manager: <code>$(printf '%s' "$MANAGER" | esc)</code>
           • SUSFS: <code>Enabled (GKI A13-5.15)</code>
-          • Build tools="android-tools (clang-r547379)"
-            if [ "${{ github.event.inputs.toolchain_type }}" = "custom-tools" ]; then
-            Build tools="custom-tools (clang - see build logs)"
-            fi
+          • Build tools=<code>${BUILD_TOOLS}</code>
 
           💥 <b>Gagal di:</b>
           ${FAILED}
