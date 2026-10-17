@@ -60,10 +60,10 @@ jobs:
             output_name: "Image.gki.ksu"
             enable_ksu: true
             extra_patches:
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-gki-fixup.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-gki-fixup.patch"
               - "https://raw.githubusercontent.com/Dyatz/Topaz_resukisu_SUSFS/refs/heads/main/patches/0001-scripts-sign-builds.patch"
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-do-not-ship-full-auto_localversion.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-scripts-do-not-ship-full-auto_localversion.patch"
           - name: "CLO"
             dir: "common_clo"
             repo_name: "clo"
@@ -74,10 +74,10 @@ jobs:
             output_name: "Image.clo.ksu"
             enable_ksu: true
             extra_patches:
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-gki-fixup.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-gki-fixup.patch"
               - "https://raw.githubusercontent.com/Dyatz/Topaz_resukisu_SUSFS/refs/heads/main/patches/0001-scripts-sign-builds.patch"
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-do-not-ship-full-auto_localversion.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-scripts-do-not-ship-full-auto_localversion.patch"
           - name: "GKI-NoKSU"
             dir: "common_gki_noksu"
             repo_name: "common"
@@ -88,10 +88,10 @@ jobs:
             output_name: "Image.gki.noksu"
             enable_ksu: false
             extra_patches:
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-gki-fixup.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-gki-fixup.patch"
               - "https://raw.githubusercontent.com/Dyatz/Topaz_resukisu_SUSFS/refs/heads/main/patches/0001-scripts-sign-builds.patch"
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-do-not-ship-full-auto_localversion.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-scripts-do-not-ship-full-auto_localversion.patch"
           - name: "CLO-NoKSU"
             dir: "common_clo_noksu"
             repo_name: "clo"
@@ -102,10 +102,10 @@ jobs:
             output_name: "Image.clo.noksu"
             enable_ksu: false
             extra_patches:
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-gki-fixup.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-gki-fixup.patch"
               - "https://raw.githubusercontent.com/Dyatz/Topaz_resukisu_SUSFS/refs/heads/main/patches/0001-scripts-sign-builds.patch"
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
-              - "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/0001-scripts-do-not-ship-full-auto_localversion.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-scripts-Don-t-append-and-dirty-to-localversion.patch"
+              - "https://raw.githubusercontent.com/Dyatz/CryoKernel_SUSFS/refs/heads/main/patches/0001-scripts-do-not-ship-full-auto_localversion.patch"
 
     env:
       KERNEL_LOC_DIR: ${{ matrix.kernel.dir }}
@@ -138,10 +138,10 @@ jobs:
           sudo docker image prune --all --force
           sudo docker builder prune -a -f
           
-      - name: 📐 Setup SWAP 20GB
+      - name: 📐 Setup SWAP 24GB
         uses: pierotofy/set-swap-space@master
         with:
-            swap-size-gb: 20
+            swap-size-gb: 24
             
       - name: 📐 Tune Swap
         run: |
