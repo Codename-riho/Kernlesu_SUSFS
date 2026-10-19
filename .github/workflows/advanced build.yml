@@ -93,7 +93,7 @@ on:
         options:
           - "thin"
           - "full"
-      susfsSupport:
+      susfsIntegration:
         description: "Add SUSFS Implementation (if KSU Enabled)"
         required: true
         type: choice
@@ -428,7 +428,7 @@ jobs:
           echo "- Root manager: **$KSU_MANAGER** ($VER)" >> "$GITHUB_STEP_SUMMARY"
           
       - name: "🧬 Apply SUSFS kernel patch"
-        if: matrix.variant == 'ksu'
+        if: matrix.variant == 'ksu'  && github.event.inputs.susfsIntegration == 'Enabled'
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         env:
           SUSFS_BRANCH: gki-android13-5.15
