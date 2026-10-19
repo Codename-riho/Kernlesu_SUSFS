@@ -93,6 +93,14 @@ on:
         options:
           - "thin"
           - "full"
+      susfsSupport:
+        description: "Add SUSFS Implementation (if KSU Enabled)"
+        required: true
+        type: choice
+        default: "Enabled"
+        options:
+          - "Enabled"
+          - "Disabled"
 
 jobs:
   Build-Kernel:
