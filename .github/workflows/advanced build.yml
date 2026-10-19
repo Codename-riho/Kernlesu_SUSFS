@@ -503,11 +503,6 @@ jobs:
         run: |
           make ${{ env.args }} ${{ env.DEFCONFIG_NAME }}
 
-      - name: Patch samsung_kdp to include ucounts 
-        run: | 
-          set -euo pipefail file="drivers/kernelsu/compat/samsung_kdp.c" if [ -f "$file" ]; then if grep -q '#include <linux/ucounts.h>' "$file"; then echo "Already patched" else # Insert the include right after the first linux include block awk 'BEGIN{p=0} /^#include <linux// && p==0 {print; print "#include <linux/ucounts.h>"; p=1; next} {print}' "$file" > "$file.tmp" && mv "$file.tmp" "$file" echo "Patched $file" # show top lines for debug sed -n '1,60p' "$file" |
-          | true fi else echo "File not found: $file — skipping patch" >&2 fi
-
       - name: "🎶 Build kernel"
         if: github.event.inputs.buildToolchains == 'custom-tools'
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
