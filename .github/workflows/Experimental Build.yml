@@ -485,10 +485,10 @@ jobs:
           esac
 
           # Logika untuk menonaktifkan SUSFS jika diminta pengguna
-            if [ "${ENABLE_SUSFS:-Enabled}" = "Disabled" ]; then
-            echo "ℹ️ SUSFS dinonaktifkan secara manual. Mengabaikan kebutuhan patch SUSFS."
-            NEED_SUSFS_PATCH=0
-          fi
+            if [ "$ENABLE_SUSFS" = "Disabled" ]; then
+               echo "ℹ️ Opsi SUSFS dinonaktifkan dari input. Mengabaikan kebutuhan patch SUSFS."
+               NEED_SUSFS_PATCH=0
+            fi
 
           REF="${KSU_REF:-$DEFAULT_REF}"
           SETUP_URL="https://raw.githubusercontent.com/${REPO}/${SETUP_BRANCH}/kernel/setup.sh"
