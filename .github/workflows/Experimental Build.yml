@@ -485,8 +485,8 @@ jobs:
           esac
 
           # Logika untuk menonaktifkan SUSFS jika diminta pengguna
-          if [ "$inputs.susfsSupport" = "Disabled" ]; then
-            echo "ℹ️ Opsi SUSFS dinonaktifkan secara manual. Mengabaikan kebutuhan patch SUSFS."
+            if [ "${ENABLE_SUSFS:-Enabled}" = "Disabled" ]; then
+            echo "ℹ️ SUSFS dinonaktifkan secara manual. Mengabaikan kebutuhan patch SUSFS."
             NEED_SUSFS_PATCH=0
           fi
 
