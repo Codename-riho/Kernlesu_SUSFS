@@ -356,7 +356,7 @@ jobs:
             -d CONFIG_KERNEL_LZO \
             -d CONFIG_KERNEL_XZ \
             -d CONFIG_UAPI_HEADER_TEST \
-            -e CONFIG_KPROFILES
+            -d CONFIG_KPROFILES
           
           # Remove duplicate lines safely
           sed -i '/ZRAM_DEF_COMP_LZO/d' "$CONFIG_FILE" || true
@@ -382,48 +382,7 @@ jobs:
             [ -f "$f" ] || { echo "::error::$f tidak terbentuk"; exit 1; }
           done
           echo "✅ BBRv3 + PLB terpasang"
-          
-      - name: "💉 Inject Kprofiles Support"
-        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
-        env:
-          KP_MODE: "3"
-        run: |
-          set -euo pipefail
-          
-          echo "📦 Mengunduh Kprofiles..."
-          rm -rf drivers/misc/kprofiles
-          for i in 1 2 3; do
-            git clone --depth=1 https://github.com/dakkshesh07/Kprofiles.git drivers/misc/kprofiles && break
-            echo "⚠️ Clone gagal ($i/3)"; rm -rf drivers/misc/kprofiles; sleep $((i*10))
-            [ "$i" = 3 ] && { echo "::error::Gagal clone Kprofiles"; exit 1; }
-          done
-          rm -rf drivers/misc/kprofiles/.git
-
-          echo "🔧 Menyambungkan ke Kconfig..."
-          if ! grep -q 'drivers/misc/kprofiles/Kconfig' drivers/misc/Kconfig; then
-            sed -i '/^menu "Misc devices"/a source "drivers/misc/kprofiles/Kconfig"' drivers/misc/Kconfig
-          fi
-          grep -q 'drivers/misc/kprofiles/Kconfig' drivers/misc/Kconfig \
-            || { echo "::error::Kconfig gagal disambungkan"; exit 1; }
-
-          echo "🔧 Menyambungkan ke Makefile..."
-          if ! grep -qF 'CONFIG_KPROFILES' drivers/misc/Makefile; then
-            echo 'obj-$(CONFIG_KPROFILES) += kprofiles/' >> drivers/misc/Makefile
-          fi
-
-          echo "🔥 Mengaktifkan Kprofiles di defconfig..."
-          CFG="arch/arm64/configs/${{ env.DEFCONFIG_NAME }}"
-          [ -f "$CFG" ] || { echo "::error::$CFG tidak ditemukan"; exit 1; }
-          
-          sed -i '/^CONFIG_KPROFILES\b/d;/^# CONFIG_KPROFILES is not set/d;/^CONFIG_KP_DEFAULT_MODE/d' "$CFG"
-          {
-            echo "CONFIG_KPROFILES=y"
-            echo "CONFIG_KP_DEFAULT_MODE=${KP_MODE}"
-            echo "CONFIG_AUTO_KPROFILES_NONE=y"
-          } >> "$CFG"
-
-          echo "✅ Kprofiles aktif, default mode = ${KP_MODE}"
-                     
+        
       - name: "🏷️ Force short localversion"
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         run: |
