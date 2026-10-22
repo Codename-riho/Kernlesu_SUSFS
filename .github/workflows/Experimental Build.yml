@@ -759,7 +759,7 @@ jobs:
           # Tampilkan hasilnya sebagai bukti
           grep -nE "LINUX_COMPILE_(BY|HOST)" "$F"
 
-      - name: "⚖️ Set CPU Governor to Balanced (schedutil)"
+      - name: "⚖️ Set CPU Governor to Default (walt)"
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         env:
           # Pastikan variabel DEFCONFIG_NAME sudah tersedia di environment
@@ -786,9 +786,9 @@ jobs:
           scripts/config --file "$CONFIG_PATH" -d CONFIG_CPU_FREQ_DEFAULT_GOV_INTERACTIVE
 
           # 3. Jadikan schedutil sebagai governor default utama
-          scripts/config --file "$CONFIG_PATH" -e CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
+          scripts/config --file "$CONFIG_PATH" -e CONFIG_CPU_FREQ_DEFAULT_GOV_WALT
 
-          echo "✅ CPU Governor berhasil disetel ke 'schedutil' pada file $DEFCONFIG_NAME!"
+          echo "✅ CPU Governor berhasil disetel ke 'walt' pada file $DEFCONFIG_NAME!"
           
       - name: "🔨 Build kernel"
         if: github.event.inputs.toolchain_type == 'android-tools'
