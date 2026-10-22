@@ -27,22 +27,20 @@ on:
       ksu_ref:
         description: "Opsional: branch/tag manager (kosong = bawaan tiap manager)"
         required: false
-        default:
-        
+        default:  
       toolchain_type:
         description: "Pilih jenis Toolchain"
         type: choice
         options:
           - android-tools
           - custom-tools
-        default: android-tools
-        
+        default: android-tools       
       customClangRepo:
         description: "Repo clang (HANYA DIPAKAI JIKA memilih 'custom-tools' di atas)"
         type: string
         default: greenforce-project/greenforce_clang
       susfsSupport:
-        description: "Add SUSFS Implementation (if KSU Enabled)"
+        description: "Add SUSFS Implementation"
         required: true
         type: choice
         default: "Enabled"
