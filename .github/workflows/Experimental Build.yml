@@ -460,10 +460,9 @@ jobs:
         if: matrix.kernel.enable_ksu == true
         working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
         env:
+          # Kita petakan input dari GitHub Actions ke Environment Variable Bash dengan aman di sini
           KSU_MANAGER: ${{ inputs.ksu_manager || 'BakaSU' }}
           KSU_REF: ${{ inputs.ksu_ref }}
-          # Tambahkan input untuk mengontrol SUSFS (bisa dari inputs GitHub Actions, default 'Enabled')
-          ENABLE_SUSFS: ${{ inputs.susfsSupport || 'Enabled' }} 
         run: |
           set -euo pipefail
           die() { echo "::error::$*"; exit 1; }
