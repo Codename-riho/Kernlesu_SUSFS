@@ -759,6 +759,37 @@ jobs:
           # Tampilkan hasilnya sebagai bukti
           grep -nE "LINUX_COMPILE_(BY|HOST)" "$F"
 
+      - name: "⚖️ Set CPU Governor to Balanced (schedutil)"
+        working-directory: ${{ env.KERNEL_LOC_DIR }}/${{ env.KERNEL_NAME }}
+        env:
+          # Pastikan variabel DEFCONFIG_NAME sudah tersedia di environment
+          DEFCONFIG_NAME: ${{ env.DEFCONFIG_NAME }} 
+        run: |
+          set -euo pipefail
+          die() { echo "::error::$*"; exit 1; }
+
+          # Menentukan lokasi file konfigurasi kernel
+          CONFIG_PATH="arch/arm64/configs/$DEFCONFIG_NAME"
+          
+          if [ ! -f "$CONFIG_PATH" ]; then
+             die "Fatal Error: File Defconfig tidak ditemukan di $CONFIG_PATH."
+          fi
+
+          echo "⚙️ Mengubah CPU Governor default menjadi 'schedutil' (Balanced)..."
+
+          # 1. Pastikan governor schedutil ikut di-build ke dalam kernel
+          scripts/config --file "$CONFIG_PATH" -e CONFIG_CPU_FREQ_GOV_SCHEDUTIL
+
+          # 2. Matikan governor lain agar tidak menjadi default
+          scripts/config --file "$CONFIG_PATH" -d CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE
+          scripts/config --file "$CONFIG_PATH" -d CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND
+          scripts/config --file "$CONFIG_PATH" -d CONFIG_CPU_FREQ_DEFAULT_GOV_INTERACTIVE
+
+          # 3. Jadikan schedutil sebagai governor default utama
+          scripts/config --file "$CONFIG_PATH" -e CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
+
+          echo "✅ CPU Governor berhasil disetel ke 'schedutil' pada file $DEFCONFIG_NAME!"
+          
       - name: "🔨 Build kernel"
         if: github.event.inputs.toolchain_type == 'android-tools'
         working-directory: ${{ env.WORK_DIR }}
